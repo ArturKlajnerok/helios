@@ -3,47 +3,92 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
-var iteration = 0
+type Request struct {
+	Number int
+	Url    string
+}
 
-func performRequest(printTime bool, startedIteration int) {
-	before := time.Now()
-	//resp, err := http.Get("http://example.com/")
-	resp, err := http.Get("http://dev-auth-s1:8080/token?grant_type=password&client_id=1234&client_secret=aabbccdd&username=test&password=test")
-	defer resp.Body.Close()
-	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+type RequestResult struct {
+	Number int
+	Time   float64
+}
+
+func performRequests(chInput chan Request, chTimes chan RequestResult, wg *sync.WaitGroup) {
+
+	for {
+		request, more := <-chInput
+		if more {
+			before := time.Now()
+			resp, err := http.Get(request.Url)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+			}
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+			after := time.Now()
+			dur := after.Sub(before)
+			result := RequestResult{request.Number, float64(dur.Nanoseconds()) / 1000000}
+			chTimes <- result
+		} else {
+			wg.Done()
+			break
+		}
 	}
-	after := time.Now()
-	dur := after.Sub(before)
-	if printTime {
-		fmt.Printf("First iteration request took: %f s\n", dur.Seconds())
-	}
-	if iteration > startedIteration {
-		fmt.Printf("Request fell into next iteration - took: %f s\n", dur.Seconds())
+}
+
+func calculateTimes(chTimes chan RequestResult, chResultTime chan float64) {
+	average := float64(0)
+	valueCount := 0
+	for {
+		reqResult, more := <-chTimes
+		if more {
+			valueCount++
+			if average == 0 {
+				average = reqResult.Time
+			} else {
+				average = average + (reqResult.Time-average)/float64(valueCount)
+			}
+			if reqResult.Number > 0 && reqResult.Number%1000 == 0 {
+				fmt.Printf("Request number %d - average time %.3f ms\n", reqResult.Number, reqResult.Time)
+			}
+		} else {
+			chResultTime <- average
+			break
+		}
 	}
 }
 
 func main() {
 	fmt.Println("Starting stress test")
 
-	throughtput := 20
+	requestCount := 10
+	threadCount := 1
+	var wg sync.WaitGroup
+	wg.Add(threadCount)
 
-	for {
-		before := time.Now()
-		iteration++
-		iter := iteration
-		for i := 0; i < throughtput; i++ {
-			go performRequest(i == 0, iter)
-		}
-		after := time.Now()
-		dur := after.Sub(before)
-		sleepTime := 1000 - (dur.Nanoseconds() / 1000000)
-		if sleepTime > 0 {
-			time.Sleep(time.Duration(sleepTime * 1000000))
-		}
+	chInput := make(chan Request, requestCount)
+	chTimes := make(chan RequestResult, requestCount)
+	chResultTime := make(chan float64, 1)
+
+	for i := 0; i < requestCount; i++ {
+		request := Request{i, "http://dev-auth-s1:8080/token?grant_type=password&client_id=123456&client_secret=aabbccdd&username=test&password=test"}
+		chInput <- request
 	}
+	close(chInput)
+
+	for i := 0; i < threadCount; i++ {
+		go performRequests(chInput, chTimes, &wg)
+	}
+
+	go calculateTimes(chTimes, chResultTime)
+	wg.Wait()
+	close(chTimes)
+
+	fmt.Printf("Average time is %f\n", <-chResultTime)
 	fmt.Println("Test finished successfully")
 }
