@@ -1,14 +1,14 @@
 package models
 
 import (
-	"github.com/coopernurse/gorp"
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/coopernurse/gorp"
 	"strconv"
 	"time"
 )
 
-desctype User struct {
+type User struct {
 	Id                 int64      `db:"user_id"`
 	Name               string     `db:"user_name"`
 	RealName           string     `db:"user_real_name"`
