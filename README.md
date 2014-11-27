@@ -8,6 +8,7 @@ Helios - Service Oriented Authentication
 * github.com/coopernurse/gorp
 
 ## Running ##
-go run main.go "<user>:<pass>@tcp(<host>:<port>)/<dbname>"
-
-
+Pass mysql config as param:
+```bash
+go run main.go "user:pass@tcp(host:port)/dbname"
+```
