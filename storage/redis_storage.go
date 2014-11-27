@@ -70,9 +70,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 		return err
 	}
 
-	conn := storage.pool.Get()
-	defer conn.Close()
-	_, err = conn.Do("SET", key, clientJSON)
+	err = storage.SetKey(key, string(clientJSON))
 	return err
 }
 
@@ -83,9 +81,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 		return err
 	}
 
-	conn := storage.pool.Get()
-	defer conn.Close()
-	_, err = conn.Do("SET", key, dataJSON)
+	err = storage.SetKey(key, string(dataJSON))
 	return err
 }
 
@@ -117,9 +113,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 		return err
 	}
 
-	conn := storage.pool.Get()
-	defer conn.Close()
-	_, err = conn.Do("SET", key, dataJSON)
+	err = storage.SetKey(key, string(dataJSON))
 	return err
 }
 
@@ -161,6 +155,16 @@ func (storage *RedisStorage) GetKey(keyName string) (string, error) {
 	}
 
 	return value, nil
+}
+
+func (storage *RedisStorage) SetKey(key string, value string) error {
+	db := storage.pool.Get()
+	defer db.Close()
+	_, err := db.Do("SET", key, value)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (storage *RedisStorage) DeleteKey(keyName string) bool {
