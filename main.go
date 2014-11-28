@@ -3,12 +3,12 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 	"net/http"
 	"os"
 )
@@ -41,7 +41,7 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 		server.FinishAccessRequest(resp, r, ar)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		fmt.Printf("ERROR: %s\n", resp.InternalError)
+		log.Printf("ERROR: %s\n", resp.InternalError)
 	}
 	osin.OutputJSON(resp, w, r)
 }

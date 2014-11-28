@@ -42,7 +42,7 @@ func (user *User) ValidPassword(password string) bool {
 }
 
 func (user *User) FindByName(dbmap *gorp.DbMap) bool {
-	err := dbmap.SelectOne(&user, "select * from user where user_name=?", u.Name)
+	err := dbmap.SelectOne(&user, "select * from user where user_name=?", user.Name)
 	if err != nil {
 		return false
 	}
