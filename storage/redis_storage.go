@@ -49,7 +49,7 @@ func (storage *RedisStorage) Clone() osin.Storage {
 }
 
 func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
-	key := CLIENT_PREFIX + id
+	key := CreateClientKey(id)
 	clientJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 }
 
 func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
-	key := CLIENT_PREFIX + id
+	key := CreateClientKey(id)
 	clientJSON, err := json.Marshal(client)
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	key := AUTHORIZE_PREFIX + data.Code
+	key := CreateAuthorizeKey(data.Code)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	key := AUTHORIZE_PREFIX + code
+	key := CreateAuthorizeKey(code)
 	authJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -99,12 +99,12 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
-	key := AUTHORIZE_PREFIX + code
+	key := CreateAuthorizeKey(code)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
-	key := ACCESS_PREFIX + data.AccessToken
+	key := CreateAccessKey(data.AccessToken)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
-	key := ACCESS_PREFIX + token
+	key := CreateAccessKey(token)
 	accessJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
-	key := ACCESS_PREFIX + token
+	key := CreateAccessKey(token)
 	return storage.DeleteKey(key)
 }
 
@@ -169,4 +169,16 @@ func (storage *RedisStorage) DeleteKey(keyName string) error {
 		return err
 	}
 	return nil
+}
+
+func CreateClientKey(id string) string {
+	return CLIENT_PREFIX + id
+}
+
+func CreateAuthorizeKey(code string) string {
+	return AUTHORIZE_PREFIX + code
+}
+
+func CreateAccessKey(token string) string {
+	return ACCESS_PREFIX + token
 }
