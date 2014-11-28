@@ -70,8 +70,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 		return err
 	}
 
-	err = storage.SetKey(key, string(clientJSON))
-	return err
+	return storage.SetKey(key, string(clientJSON))
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
@@ -81,8 +80,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 		return err
 	}
 
-	err = storage.SetKey(key, string(dataJSON))
-	return err
+	return storage.SetKey(key, string(dataJSON))
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
@@ -102,8 +100,7 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
 	key := AUTHORIZE_PREFIX + code
-	storage.DeleteKey(key)
-	return nil
+	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
@@ -113,8 +110,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 		return err
 	}
 
-	err = storage.SetKey(key, string(dataJSON))
-	return err
+	return storage.SetKey(key, string(dataJSON))
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
@@ -134,8 +130,7 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
 	key := ACCESS_PREFIX + token
-	storage.DeleteKey(key)
-	return nil
+	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error) {
@@ -153,7 +148,6 @@ func (storage *RedisStorage) GetKey(keyName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return value, nil
 }
 
@@ -167,13 +161,12 @@ func (storage *RedisStorage) SetKey(key string, value string) error {
 	return nil
 }
 
-func (storage *RedisStorage) DeleteKey(keyName string) bool {
+func (storage *RedisStorage) DeleteKey(keyName string) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("DEL", keyName)
 	if err != nil {
-		return false
+		return err
 	}
-
-	return true
+	return nil
 }
