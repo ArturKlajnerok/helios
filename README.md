@@ -2,10 +2,12 @@ Helios - Service Oriented Authentication
 ==========
 
 ## Dependencies ##
-* code.google.com/p/go-uuid
-* github.com/RangelReale/osin
-* github.com/go-sql-driver/mysql
-* github.com/coopernurse/gorp
+* code.google.com/p/go-uuid        - UUID generator for Go
+* github.com/RangelReale/osin      - OAuth2 server library for Go
+* github.com/garyburd/redigo/redis - Redis client for Go 
+* github.com/go-sql-driver/mysql   - MySQL Driver for Go
+* github.com/coopernurse/gorp      - ORM-ish library for Go
+
 
 ## Running ##
 Pass mysql config as param:
