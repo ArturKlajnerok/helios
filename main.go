@@ -1,12 +1,12 @@
 package main
 
 import (
-	"./models"
-	"./storage"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/helios/models"
+	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
 	"net/http"
