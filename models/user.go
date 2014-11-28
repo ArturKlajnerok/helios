@@ -41,8 +41,8 @@ func (user *User) ValidPassword(password string) bool {
 	return user.HashedPassword == hash
 }
 
-func (u *User) FindByName(dbmap *gorp.DbMap) bool {
-	err := dbmap.SelectOne(&u, "select * from user where user_name=?", u.Name)
+func (user *User) FindByName(dbmap *gorp.DbMap) bool {
+	err := dbmap.SelectOne(&user, "select * from user where user_name=?", u.Name)
 	if err != nil {
 		return false
 	}
