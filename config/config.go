@@ -1,5 +1,9 @@
 package config
 
+type ServerConfig struct {
+	Address string `json:"address"`
+}
+
 type DbConfig struct {
 	Type         string `json:"type"`
 	Engine       string `json:"engine"`
@@ -15,27 +19,32 @@ type RedisConfig struct {
 }
 
 type Config struct {
-	Db    *DbConfig    `json:"db"`
-	Redis *RedisConfig `json:"redis"`
+	Server *ServerConfig `json:"server"`
+	Db     *DbConfig     `json:"db"`
+	Redis  *RedisConfig  `json:"redis"`
 }
 
 var config *Config
 
 func LoadConfig() *Config {
-	dbConfig := new(DbConfig)
-	dbConfig.Type = "mysql"
-	dbConfig.Engine = "InnoDB"
-	dbConfig.Encoding = "UTF8"
-	dbConfig.UserTable = "user"
-	dbConfig.UserTableKey = "Id"
+	server := new(ServerConfig)
+	server.Address = ":8080"
 
-	redisConfig := new(RedisConfig)
-	redisConfig.Address = "localhost:6379"
-	redisConfig.Password = ""
-	redisConfig.Prefix = "auth"
+	db := new(DbConfig)
+	db.Type = "mysql"
+	db.Engine = "InnoDB"
+	db.Encoding = "UTF8"
+	db.UserTable = "user"
+	db.UserTableKey = "Id"
+
+	redis := new(RedisConfig)
+	redis.Address = "localhost:6379"
+	redis.Password = ""
+	redis.Prefix = "auth"
 
 	config := new(Config)
-	config.Db = dbConfig
-	config.Redis = redisConfig
+	config.Server = server
+	config.Db = db
+	config.Redis = redis
 	return config
 }

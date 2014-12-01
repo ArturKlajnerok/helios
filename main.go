@@ -68,5 +68,5 @@ func main() {
 	server = osin.NewServer(osinConfig, redisStorage)
 
 	http.HandleFunc("/token", tokenHandler)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(conf.Server.Address, nil)
 }
