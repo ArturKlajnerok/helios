@@ -19,17 +19,17 @@ type RedisStorage struct {
 	prefix string
 }
 
-func NewRedisStorage(server, prefix string) *RedisStorage {
-	pool := newPool(server, "")
+func NewRedisStorage(address, password, prefix string) *RedisStorage {
+	pool := newPool(address, password)
 	return &RedisStorage{pool: pool, prefix: prefix}
 }
 
-func newPool(server, password string) *redis.Pool {
+func newPool(address, password string) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", server)
+			c, err := redis.Dial("tcp", address)
 			if err != nil {
 				return nil, err
 			}

@@ -19,7 +19,8 @@ const (
 	DB_ENGINE     = "InnoDB"
 	DB_KEY        = "Id"
 	DB_USER_TABLE = "user"
-	REDIS_HOST    = "localhost:6379"
+	REDIS_ADDRESS = "localhost:6379"
+	REDIS_PASS    = ""
 	REDIS_PREFIX  = "auth"
 )
 
@@ -71,7 +72,7 @@ func main() {
 	cfg.AllowGetAccessRequest = true
 	cfg.AllowClientSecretInParams = true
 
-	server = osin.NewServer(cfg, storage.NewRedisStorage(REDIS_HOST, REDIS_PREFIX))
+	server = osin.NewServer(cfg, storage.NewRedisStorage(REDIS_ADDRESS, REDIS_PASS, REDIS_PREFIX))
 
 	http.HandleFunc("/token", tokenHandler)
 	http.ListenAndServe(":8080", nil)
