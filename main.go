@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
@@ -11,17 +12,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-)
-
-const (
-	DB_TYPE       = "mysql"
-	DB_ENCODING   = "UTF8"
-	DB_ENGINE     = "InnoDB"
-	DB_KEY        = "Id"
-	DB_USER_TABLE = "user"
-	REDIS_ADDRESS = "localhost:6379"
-	REDIS_PASS    = ""
-	REDIS_PREFIX  = "auth"
 )
 
 var server *osin.Server
@@ -47,13 +37,13 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 	osin.OutputJSON(resp, w, r)
 }
 
-func initDb(dataSourceName string) *gorp.DbMap {
-	db, err := sql.Open(DB_TYPE, dataSourceName)
+func initDb(dataSourceName string, dbConfig *config.DbConfig) *gorp.DbMap {
+	db, err := sql.Open(dbConfig.Type, dataSourceName)
 	if err != nil {
 		panic(err)
 	}
-	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{DB_ENGINE, DB_ENCODING}}
-	dbmap.AddTableWithName(models.User{}, DB_USER_TABLE).SetKeys(true, DB_KEY)
+	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{dbConfig.Engine, dbConfig.Encoding}}
+	dbmap.AddTableWithName(models.User{}, dbConfig.UserTable).SetKeys(true, dbConfig.UserTableKey)
 	return dbmap
 }
 
@@ -64,15 +54,18 @@ func main() {
 	}
 	dataSourceName := os.Args[1]
 
-	dbmap = initDb(dataSourceName)
+	conf := config.LoadConfig()
+
+	dbmap = initDb(dataSourceName, conf.Db)
 	defer dbmap.Db.Close()
 
-	cfg := osin.NewServerConfig()
-	cfg.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
-	cfg.AllowGetAccessRequest = true
-	cfg.AllowClientSecretInParams = true
+	osinConfig := osin.NewServerConfig()
+	osinConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
+	osinConfig.AllowGetAccessRequest = true
+	osinConfig.AllowClientSecretInParams = true
 
-	server = osin.NewServer(cfg, storage.NewRedisStorage(REDIS_ADDRESS, REDIS_PASS, REDIS_PREFIX))
+	redisStorage := storage.NewRedisStorage(conf.Redis.Address, conf.Redis.Password, conf.Redis.Prefix)
+	server = osin.NewServer(osinConfig, redisStorage)
 
 	http.HandleFunc("/token", tokenHandler)
 	http.ListenAndServe(":8080", nil)
