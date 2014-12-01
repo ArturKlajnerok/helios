@@ -38,8 +38,12 @@ var config *Config
 func LoadConfig(path string) *Config {
 	configFile, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Printf("ERROR: %s\n", err)
+		log.Printf("Error on config file load: %s\n", err)
 	}
-	json.Unmarshal(configFile, &config)
+
+	err = json.Unmarshal(configFile, &config)
+	if err != nil {
+		log.Printf("Error on config unmarshal: %s\n", err)
+	}
 	return config
 }
