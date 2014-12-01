@@ -64,7 +64,7 @@ func main() {
 	osinConfig.AllowGetAccessRequest = true
 	osinConfig.AllowClientSecretInParams = true
 
-	redisStorage := storage.NewRedisStorage(conf.Redis.Address, conf.Redis.Password, conf.Redis.Prefix)
+	redisStorage := storage.NewRedisStorage(conf.Redis)
 	server = osin.NewServer(osinConfig, redisStorage)
 
 	http.HandleFunc("/token", tokenHandler)

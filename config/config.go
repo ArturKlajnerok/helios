@@ -1,5 +1,9 @@
 package config
 
+import (
+	"time"
+)
+
 type ServerConfig struct {
 	Address string `json:"address"`
 }
@@ -13,9 +17,11 @@ type DbConfig struct {
 }
 
 type RedisConfig struct {
-	Address  string `json:"address"`
-	Password string `json:"password"`
-	Prefix   string `json:"prefix"`
+	Address        string        `json:"address"`
+	Password       string        `json:"password"`
+	Prefix         string        `json:"prefix"`
+	MaxIdleConn    int           `json:"max_idle_connections"`
+	IdleTimeoutSec time.Duration `json:"idle_timeout_in_seconds"`
 }
 
 type Config struct {
@@ -41,6 +47,8 @@ func LoadConfig() *Config {
 	redis.Address = "localhost:6379"
 	redis.Password = ""
 	redis.Prefix = "auth"
+	redis.MaxIdleConn = 3
+	redis.IdleTimeoutSec = 240
 
 	config := new(Config)
 	config.Server = server

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/helios/config"
 	"github.com/garyburd/redigo/redis"
 	"time"
 )
@@ -19,17 +20,17 @@ type RedisStorage struct {
 	prefix string
 }
 
-func NewRedisStorage(address, password, prefix string) *RedisStorage {
-	pool := newPool(address, password)
-	return &RedisStorage{pool: pool, prefix: prefix}
+func NewRedisStorage(config *config.RedisConfig) *RedisStorage {
+	pool := newPool(config)
+	return &RedisStorage{pool: pool, prefix: config.Prefix}
 }
 
-func newPool(address, password string) *redis.Pool {
+func newPool(config *config.RedisConfig) *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 240 * time.Second,
+		MaxIdle:     config.MaxIdleConn,
+		IdleTimeout: config.IdleTimeoutSec * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", address)
+			c, err := redis.Dial("tcp", config.Address)
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +43,7 @@ func newPool(address, password string) *redis.Pool {
 	}
 }
 
-func (store *RedisStorage) Close() {}
+func (storage *RedisStorage) Close() {}
 
 func (storage *RedisStorage) Clone() osin.Storage {
 	return storage
