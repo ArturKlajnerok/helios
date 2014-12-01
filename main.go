@@ -34,7 +34,7 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 		case osin.PASSWORD:
 			user := models.User{Name: ar.Username}
 			user.FindByName(dbmap)
-			if user.ValidPassword(ar.Password) {
+			if user.IsValidPassword(ar.Password) {
 				ar.Authorized = true
 			}
 		}

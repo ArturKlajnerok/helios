@@ -10,9 +10,9 @@ const (
 	UserPasswordHash = "c4d81016667031737ffeda045105816e"
 )
 
-func TestValidPassword(t *testing.T) {
+func TestIsValidPassword(t *testing.T) {
 	user := User{Id: UserID, HashedPassword: UserPasswordHash}
-	if !user.ValidPassword(UserPassword) {
+	if !user.IsValidPassword(UserPassword) {
 		t.Error("Expected hash: ", UserPasswordHash)
 	}
 }

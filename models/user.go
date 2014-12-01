@@ -28,7 +28,7 @@ type User struct {
 	Options            []byte     `db:"user_options"`
 }
 
-func (user *User) ValidPassword(password string) bool {
+func (user *User) IsValidPassword(password string) bool {
 	hasher := md5.New()
 	hasher.Write([]byte(password))
 	hash := hex.EncodeToString(hasher.Sum(nil))
