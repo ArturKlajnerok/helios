@@ -49,7 +49,7 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 func initDb(dataSourceName string) *gorp.DbMap {
 	db, err := sql.Open(DB_TYPE, dataSourceName)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{DB_ENGINE, DB_ENCODING}}
 	dbmap.AddTableWithName(models.User{}, DB_USER_TABLE).SetKeys(true, DB_KEY)
