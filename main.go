@@ -54,7 +54,7 @@ func main() {
 	}
 	dataSourceName := os.Args[1]
 
-	conf := config.LoadConfig()
+	conf := config.LoadConfig("./config/config.json")
 
 	dbmap = initDb(dataSourceName, conf.Db)
 	defer dbmap.Db.Close()

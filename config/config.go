@@ -1,6 +1,9 @@
 package config
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"time"
 )
 
@@ -32,27 +35,11 @@ type Config struct {
 
 var config *Config
 
-func LoadConfig() *Config {
-	server := new(ServerConfig)
-	server.Address = ":8080"
-
-	db := new(DbConfig)
-	db.Type = "mysql"
-	db.Engine = "InnoDB"
-	db.Encoding = "UTF8"
-	db.UserTable = "user"
-	db.UserTableKey = "Id"
-
-	redis := new(RedisConfig)
-	redis.Address = "localhost:6379"
-	redis.Password = ""
-	redis.Prefix = "auth"
-	redis.MaxIdleConn = 3
-	redis.IdleTimeoutSec = 240
-
-	config := new(Config)
-	config.Server = server
-	config.Db = db
-	config.Redis = redis
+func LoadConfig(path string) *Config {
+	configFile, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Printf("ERROR: %s\n", err)
+	}
+	json.Unmarshal(configFile, &config)
 	return config
 }
