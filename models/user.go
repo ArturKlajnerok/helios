@@ -3,8 +3,8 @@ package models
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"github.com/coopernurse/gorp"
-	"strconv"
 	"time"
 )
 
@@ -33,7 +33,7 @@ func (user *User) ValidPassword(password string) bool {
 	hasher.Write([]byte(password))
 	hash := hex.EncodeToString(hasher.Sum(nil))
 
-	hash = strconv.FormatInt(user.Id, 10) + "-" + hash
+	hash = fmt.Sprintf("%d-%s", user.Id, hash)
 
 	hasher.Reset()
 	hasher.Write([]byte(hash))

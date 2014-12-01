@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
@@ -59,7 +58,7 @@ func initDb(dataSourceName string) *gorp.DbMap {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
+		log.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
 		panic(errors.New("No data source provided"))
 	}
 	dataSourceName := os.Args[1]
