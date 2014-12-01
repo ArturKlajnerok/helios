@@ -57,7 +57,7 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 	}
 
 	client := new(osin.DefaultClient)
-	if err := json.Unmarshal([]byte(clientJSON), &client); err != nil {
+	if err := json.Unmarshal(clientJSON, &client); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +92,7 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 	}
 
 	auth := new(osin.AuthorizeData)
-	if err := json.Unmarshal([]byte(authJSON), &auth); err != nil {
+	if err := json.Unmarshal(authJSON, &auth); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +122,7 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 	}
 
 	access := new(osin.AccessData)
-	if err := json.Unmarshal([]byte(accessJSON), &access); err != nil {
+	if err := json.Unmarshal(accessJSON, &access); err != nil {
 		return nil, err
 	}
 
@@ -142,14 +142,14 @@ func (storage *RedisStorage) RemoveRefresh(token string) error {
 	return errors.New("Not implemented")
 }
 
-func (storage *RedisStorage) GetKey(keyName string) (string, error) {
+func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
 	db := storage.pool.Get()
 	defer db.Close()
 	value, err := redis.String(db.Do("GET", keyName))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return value, nil
+	return []byte(value), nil
 }
 
 func (storage *RedisStorage) SetKey(key string, value string) error {
