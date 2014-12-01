@@ -29,16 +29,20 @@ type User struct {
 }
 
 func (user *User) IsValidPassword(password string) bool {
+	hash := HashPassword(password, user.Id)
+	return user.HashedPassword == hash
+}
+
+func HashPassword(password string, userId int64) string {
 	hasher := md5.New()
 	hasher.Write([]byte(password))
 	hash := hex.EncodeToString(hasher.Sum(nil))
 
-	hash = fmt.Sprintf("%d-%s", user.Id, hash)
+	hash = fmt.Sprintf("%d-%s", userId, hash)
 
 	hasher.Reset()
 	hasher.Write([]byte(hash))
-	hash = hex.EncodeToString(hasher.Sum(nil))
-	return user.HashedPassword == hash
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func (user *User) FindByName(dbmap *gorp.DbMap) bool {
