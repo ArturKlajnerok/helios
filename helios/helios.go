@@ -77,5 +77,9 @@ func (helios *Helios) Run() {
 	helios.initServer(conf.Redis)
 
 	http.HandleFunc("/token", helios.tokenHandler)
-	http.ListenAndServe(conf.Server.Address, nil)
+
+	err := http.ListenAndServe(conf.Server.Address, nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }
