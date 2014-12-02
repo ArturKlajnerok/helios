@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/helios/config"
 	"github.com/garyburd/redigo/redis"
@@ -13,6 +12,7 @@ const (
 	CLIENT_PREFIX    = "client."
 	AUTHORIZE_PREFIX = "authorization."
 	ACCESS_PREFIX    = "access."
+	REFRESH_PREFIX   = "refresh."
 )
 
 type RedisStorage struct {
@@ -111,7 +111,12 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 		return err
 	}
 
-	return storage.SetKey(key, string(dataJSON))
+	err = storage.SetKey(key, string(dataJSON))
+	if data.RefreshToken != "" {
+		key_refresh := CreateRefreshKey(data.RefreshToken)
+		err = storage.SetKey(key_refresh, string(dataJSON))
+	}
+	return err
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
@@ -121,12 +126,7 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 		return nil, err
 	}
 
-	access := new(osin.AccessData)
-	if err := json.Unmarshal(accessJSON, &access); err != nil {
-		return nil, err
-	}
-
-	return access, nil
+	return UnmarshallAccess(accessJSON)
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
@@ -135,11 +135,27 @@ func (storage *RedisStorage) RemoveAccess(token string) error {
 }
 
 func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error) {
-	return nil, errors.New("Not implemented")
+	key := CreateRefreshKey(token)
+	refreshJSON, storeErr := storage.GetKey(key)
+	if storeErr != nil {
+		return nil, storeErr
+	}
+
+	access, err := UnmarshallAccess(refreshJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clear old access data
+	if access.AccessData != nil {
+		access.AccessData = nil
+	}
+	return access, nil
 }
 
 func (storage *RedisStorage) RemoveRefresh(token string) error {
-	return errors.New("Not implemented")
+	key := CreateRefreshKey(token)
+	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
@@ -182,4 +198,19 @@ func CreateAuthorizeKey(code string) string {
 
 func CreateAccessKey(token string) string {
 	return ACCESS_PREFIX + token
+}
+
+func CreateRefreshKey(token string) string {
+	return REFRESH_PREFIX + token
+}
+
+func UnmarshallAccess(JSON []byte) (*osin.AccessData, error) {
+	access := new(osin.AccessData)
+	access.Client = new(osin.DefaultClient)
+	access.AccessData = new(osin.AccessData)
+	access.AccessData.Client = new(osin.DefaultClient)
+	if err := json.Unmarshal(JSON, &access); err != nil {
+		return nil, err
+	}
+	return access, nil
 }
