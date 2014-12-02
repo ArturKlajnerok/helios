@@ -1,0 +1,19 @@
+{
+	"server" : {
+		"address" : ":8080"
+	},
+	"db" : {
+		"type" : "mysql",
+		"engine" : "InnoDB",
+		"encoding" : "UTF8",
+		"user_table" : "user",
+		"user_table_key" : "Id"
+	},
+	"redis" : {
+		"address" : "localhost:6379",
+		"password" : "",
+		"prefix" : "auth",
+		"max_idle_connections" : 3,
+		"idle_timeout_in_seconds" : 240
+	}
+}
