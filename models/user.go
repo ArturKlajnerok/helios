@@ -2,10 +2,13 @@ package models
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"github.com/coopernurse/gorp"
 	"time"
+
+	"github.com/Wikia/go-commons/logger"
+	"github.com/coopernurse/gorp"
 )
 
 type User struct {
@@ -45,10 +48,15 @@ func HashPassword(password string, userId int64) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func (user *User) FindByName(dbmap *gorp.DbMap) bool {
+func (user *User) FindByName(dbmap *gorp.DbMap) (bool, error) {
 	err := dbmap.SelectOne(&user, "select * from user where user_name=?", user.Name)
 	if err != nil {
-		return false
+		if err == sql.ErrNoRows {
+			return false, nil
+		} else {
+			logger.GetLogger().ErrorErr(err)
+			return false, err
+		}
 	}
-	return true
+	return true, nil
 }

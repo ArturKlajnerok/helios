@@ -2,16 +2,17 @@ package main
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/go-commons/logger"
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
-	"net/http"
-	"os"
 )
 
 var server *osin.Server
@@ -32,14 +33,16 @@ func tokenHandler(w http.ResponseWriter, r *http.Request) {
 		server.FinishAccessRequest(resp, r, ar)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Printf("ERROR: %s\n", resp.InternalError)
+		logger.GetLogger().ErrorErr(resp.InternalError)
 	}
+	logger.GetLogger().Debug("Token generated")
 	osin.OutputJSON(resp, w, r)
 }
 
 func initDb(dataSourceName string, dbConfig *config.DbConfig) *gorp.DbMap {
 	db, err := sql.Open(dbConfig.Type, dataSourceName)
 	if err != nil {
+		logger.GetLogger().ErrorErr(err)
 		panic(err)
 	}
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{dbConfig.Engine, dbConfig.Encoding}}
@@ -49,9 +52,11 @@ func initDb(dataSourceName string, dbConfig *config.DbConfig) *gorp.DbMap {
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
-		panic(errors.New("No data source provided"))
+		fmt.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
+		return
 	}
+	logger.InitLogger("helios", logger.LOG_LEVEL_DEBUG)
+	logger.GetLogger().Info("Starting Helios")
 	dataSourceName := os.Args[1]
 
 	conf := config.LoadConfig()
