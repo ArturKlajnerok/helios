@@ -50,7 +50,7 @@ func (storage *RedisStorage) Clone() osin.Storage {
 }
 
 func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
-	key := CreateClientKey(id)
+	key := createClientKey(id)
 	clientJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 }
 
 func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
-	key := CreateClientKey(id)
+	key := createClientKey(id)
 	clientJSON, err := json.Marshal(client)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	key := CreateAuthorizeKey(data.Code)
+	key := createAuthorizeKey(data.Code)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	key := CreateAuthorizeKey(code)
+	key := createAuthorizeKey(code)
 	authJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -100,12 +100,12 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
-	key := CreateAuthorizeKey(code)
+	key := createAuthorizeKey(code)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
-	key := CreateAccessKey(data.AccessToken)
+	key := createAccessKey(data.AccessToken)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -113,35 +113,35 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 
 	err = storage.SetKey(key, string(dataJSON))
 	if data.RefreshToken != "" {
-		key_refresh := CreateRefreshKey(data.RefreshToken)
+		key_refresh := createRefreshKey(data.RefreshToken)
 		err = storage.SetKey(key_refresh, string(dataJSON))
 	}
 	return err
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
-	key := CreateAccessKey(token)
+	key := createAccessKey(token)
 	accessJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
 	}
 
-	return UnmarshallAccess(accessJSON)
+	return unmarshallAccess(accessJSON)
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
-	key := CreateAccessKey(token)
+	key := createAccessKey(token)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error) {
-	key := CreateRefreshKey(token)
+	key := createRefreshKey(token)
 	refreshJSON, storeErr := storage.GetKey(key)
 	if storeErr != nil {
 		return nil, storeErr
 	}
 
-	access, err := UnmarshallAccess(refreshJSON)
+	access, err := unmarshallAccess(refreshJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error)
 }
 
 func (storage *RedisStorage) RemoveRefresh(token string) error {
-	key := CreateRefreshKey(token)
+	key := createRefreshKey(token)
 	return storage.DeleteKey(key)
 }
 
@@ -188,23 +188,23 @@ func (storage *RedisStorage) DeleteKey(keyName string) error {
 	return nil
 }
 
-func CreateClientKey(id string) string {
+func createClientKey(id string) string {
 	return CLIENT_PREFIX + id
 }
 
-func CreateAuthorizeKey(code string) string {
+func createAuthorizeKey(code string) string {
 	return AUTHORIZE_PREFIX + code
 }
 
-func CreateAccessKey(token string) string {
+func createAccessKey(token string) string {
 	return ACCESS_PREFIX + token
 }
 
-func CreateRefreshKey(token string) string {
+func createRefreshKey(token string) string {
 	return REFRESH_PREFIX + token
 }
 
-func UnmarshallAccess(JSON []byte) (*osin.AccessData, error) {
+func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {
 	access := new(osin.AccessData)
 	access.Client = new(osin.DefaultClient)
 	access.AccessData = new(osin.AccessData)
