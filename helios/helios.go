@@ -6,23 +6,47 @@ import (
 
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/go-commons/logger"
+	"github.com/Wikia/go-commons/perfmonitoring"
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/influxdb/influxdb/client"
+)
+
+const (
+	INFLUX_APP_NAME    = "helios"
+	INFLUX_SERIES_NAME = "metrics"
 )
 
 type Helios struct {
-	server *osin.Server
-	dbmap  *gorp.DbMap
+	server         *osin.Server
+	dbmap          *gorp.DbMap
+	influxdbClient *client.Client
 }
 
 func NewHelios() *Helios {
 	return new(Helios)
 }
 
+func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.Timer {
+	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, INFLUX_APP_NAME, INFLUX_SERIES_NAME)
+	timer := perfmonitoring.NewTimer(perfMon, "response_time")
+	//timer.AddValue("method_name", methodName)
+	return timer
+}
+
+func (helios *Helios) closeTimer(timer *perfmonitoring.Timer) {
+	err := timer.Close()
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+	}
+}
+
 func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
+	timer := helios.createTimerForAPICall("tokenHandler")
+	defer helios.closeTimer(timer)
 	resp := helios.server.NewResponse()
 	defer resp.Close()
 	if ar := helios.server.HandleAccessRequest(resp, r); ar != nil {
@@ -38,6 +62,8 @@ func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if resp.IsError && resp.InternalError != nil {
 		logger.GetLogger().ErrorErr(resp.InternalError)
+	} else {
+		logger.GetLogger().Debug("Successfully processed tokenHandler")
 	}
 	osin.OutputJSON(resp, w, r)
 }
@@ -67,6 +93,13 @@ func (helios *Helios) Run(dataSourceName string) {
 	logger.InitLogger("helios", logger.LOG_LEVEL_DEBUG)
 	logger.GetLogger().Info("Starting Helios")
 
+	var err error
+	helios.influxdbClient, err = perfmonitoring.NewInfluxdbClient()
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		panic(err)
+	}
+
 	helios.initDb(dataSourceName, conf.Db)
 	defer helios.dbmap.Db.Close()
 
@@ -74,7 +107,7 @@ func (helios *Helios) Run(dataSourceName string) {
 
 	http.HandleFunc("/token", helios.tokenHandler)
 
-	err := http.ListenAndServe(conf.Server.Address, nil)
+	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
 		logger.GetLogger().ErrorErr(err)
 		panic(err)
