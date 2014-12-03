@@ -71,7 +71,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 		return err
 	}
 
-	return storage.SetKey(key, string(clientJSON))
+	return storage.SetKey(key, clientJSON)
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
@@ -81,7 +81,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 		return err
 	}
 
-	return storage.SetKey(key, string(dataJSON))
+	return storage.SetKey(key, dataJSON)
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
@@ -111,10 +111,10 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 		return err
 	}
 
-	err = storage.SetKey(key, string(dataJSON))
+	err = storage.SetKey(key, dataJSON)
 	if data.RefreshToken != "" {
 		key_refresh := createRefreshKey(data.RefreshToken)
-		err = storage.SetKey(key_refresh, string(dataJSON))
+		err = storage.SetKey(key_refresh, dataJSON)
 	}
 	return err
 }
@@ -168,10 +168,10 @@ func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
 	return []byte(value), nil
 }
 
-func (storage *RedisStorage) SetKey(key string, value string) error {
+func (storage *RedisStorage) SetKey(key string, value []byte) error {
 	db := storage.pool.Get()
 	defer db.Close()
-	_, err := db.Do("SET", key, value)
+	_, err := db.Do("SET", key, string(value))
 	if err != nil {
 		return err
 	}
