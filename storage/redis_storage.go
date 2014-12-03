@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/helios/config"
 	"github.com/garyburd/redigo/redis"
@@ -13,6 +12,7 @@ const (
 	CLIENT_PREFIX    = "client."
 	AUTHORIZE_PREFIX = "authorization."
 	ACCESS_PREFIX    = "access."
+	REFRESH_PREFIX   = "refresh."
 )
 
 type RedisStorage struct {
@@ -50,7 +50,7 @@ func (storage *RedisStorage) Clone() osin.Storage {
 }
 
 func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
-	key := CreateClientKey(id)
+	key := createClientKey(id)
 	clientJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -65,27 +65,27 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 }
 
 func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
-	key := CreateClientKey(id)
+	key := createClientKey(id)
 	clientJSON, err := json.Marshal(client)
 	if err != nil {
 		return err
 	}
 
-	return storage.SetKey(key, string(clientJSON))
+	return storage.SetKey(key, clientJSON)
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	key := CreateAuthorizeKey(data.Code)
+	key := createAuthorizeKey(data.Code)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	return storage.SetKey(key, string(dataJSON))
+	return storage.SetKey(key, dataJSON)
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	key := CreateAuthorizeKey(code)
+	key := createAuthorizeKey(code)
 	authJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
@@ -100,46 +100,62 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
-	key := CreateAuthorizeKey(code)
+	key := createAuthorizeKey(code)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
-	key := CreateAccessKey(data.AccessToken)
+	key := createAccessKey(data.AccessToken)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	return storage.SetKey(key, string(dataJSON))
+	err = storage.SetKey(key, dataJSON)
+	if data.RefreshToken != "" {
+		key_refresh := createRefreshKey(data.RefreshToken)
+		err = storage.SetKey(key_refresh, dataJSON)
+	}
+	return err
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
-	key := CreateAccessKey(token)
+	key := createAccessKey(token)
 	accessJSON, err := storage.GetKey(key)
 	if err != nil {
 		return nil, err
 	}
 
-	access := new(osin.AccessData)
-	if err := json.Unmarshal(accessJSON, &access); err != nil {
-		return nil, err
-	}
-
-	return access, nil
+	return unmarshallAccess(accessJSON)
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
-	key := CreateAccessKey(token)
+	key := createAccessKey(token)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error) {
-	return nil, errors.New("Not implemented")
+	key := createRefreshKey(token)
+	refreshJSON, storeErr := storage.GetKey(key)
+	if storeErr != nil {
+		return nil, storeErr
+	}
+
+	access, err := unmarshallAccess(refreshJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clear old access data
+	if access.AccessData != nil {
+		access.AccessData = nil
+	}
+	return access, nil
 }
 
 func (storage *RedisStorage) RemoveRefresh(token string) error {
-	return errors.New("Not implemented")
+	key := createRefreshKey(token)
+	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
@@ -152,10 +168,10 @@ func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
 	return []byte(value), nil
 }
 
-func (storage *RedisStorage) SetKey(key string, value string) error {
+func (storage *RedisStorage) SetKey(key string, value []byte) error {
 	db := storage.pool.Get()
 	defer db.Close()
-	_, err := db.Do("SET", key, value)
+	_, err := db.Do("SET", key, string(value))
 	if err != nil {
 		return err
 	}
@@ -172,14 +188,29 @@ func (storage *RedisStorage) DeleteKey(keyName string) error {
 	return nil
 }
 
-func CreateClientKey(id string) string {
+func createClientKey(id string) string {
 	return CLIENT_PREFIX + id
 }
 
-func CreateAuthorizeKey(code string) string {
+func createAuthorizeKey(code string) string {
 	return AUTHORIZE_PREFIX + code
 }
 
-func CreateAccessKey(token string) string {
+func createAccessKey(token string) string {
 	return ACCESS_PREFIX + token
+}
+
+func createRefreshKey(token string) string {
+	return REFRESH_PREFIX + token
+}
+
+func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {
+	access := new(osin.AccessData)
+	access.Client = new(osin.DefaultClient)
+	access.AccessData = new(osin.AccessData)
+	access.AccessData.Client = new(osin.DefaultClient)
+	if err := json.Unmarshal(JSON, &access); err != nil {
+		return nil, err
+	}
+	return access, nil
 }

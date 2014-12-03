@@ -34,6 +34,8 @@ func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
 			if user.IsValidPassword(ar.Password) {
 				ar.Authorized = true
 			}
+		case osin.REFRESH_TOKEN:
+			ar.Authorized = true
 		}
 		helios.server.FinishAccessRequest(resp, r, ar)
 	}
