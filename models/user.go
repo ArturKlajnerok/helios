@@ -32,11 +32,11 @@ type User struct {
 }
 
 func (user *User) IsValidPassword(password string) bool {
-	hash := HashPassword(password, user.Id)
+	hash := hashPassword(password, user.Id)
 	return user.HashedPassword == hash
 }
 
-func HashPassword(password string, userId int64) string {
+func hashPassword(password string, userId int64) string {
 	hasher := md5.New()
 	hasher.Write([]byte(password))
 	hash := hex.EncodeToString(hasher.Sum(nil))
