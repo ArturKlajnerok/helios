@@ -33,7 +33,7 @@ func NewHelios() *Helios {
 func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.Timer {
 	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, INFLUX_APP_NAME, INFLUX_SERIES_NAME)
 	timer := perfmonitoring.NewTimer(perfMon, "response_time")
-	//timer.AddValue("method_name", methodName)
+	timer.AddValue("method_name", methodName)
 	return timer
 }
 
