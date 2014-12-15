@@ -134,13 +134,7 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 		return nil, err
 	}
 
-	access := new(osin.AccessData)
-	if err := json.Unmarshal(accessJSON, &access); err != nil {
-		logger.GetLogger().ErrorErr(err)
-		return nil, err
-	}
-
-	return access, nil
+	return unmarshallAccess(accessJSON)
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
