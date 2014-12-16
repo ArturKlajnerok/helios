@@ -29,6 +29,7 @@ func (helios *Helios) infoHandler(w http.ResponseWriter, r *http.Request) {
 
 	if ir := helios.server.HandleInfoRequest(resp, r); ir != nil {
 		helios.server.FinishInfoRequest(resp, r, ir)
+		resp.Output["user_id"] = ir.AccessData.UserData
 	}
 	osin.OutputJSON(resp, w, r)
 }
@@ -42,6 +43,7 @@ func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
 			user := models.User{Name: ar.Username}
 			user.FindByName(helios.dbmap)
 			if user.IsValidPassword(ar.Password) {
+				ar.UserData = user.Id
 				ar.Authorized = true
 			}
 		case osin.REFRESH_TOKEN:
