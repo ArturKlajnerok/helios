@@ -33,6 +33,18 @@ func (user *User) IsValidPassword(password string) bool {
 	return user.HashedPassword == hash
 }
 
+func HashPassword(password string, salt string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(password))
+	hash := hex.EncodeToString(hasher.Sum(nil))
+
+	hash = fmt.Sprintf("%s-%s", salt, hash)
+
+	hasher.Reset()
+	hasher.Write([]byte(hash))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
 func OldHashPassword(password string, userId int64) string {
 	hasher := md5.New()
 	hasher.Write([]byte(password))
