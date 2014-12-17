@@ -5,7 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/coopernurse/gorp"
+	"log"
+	"strings"
 	"time"
+)
+
+const (
+	HashPrefix = ":B:"
 )
 
 type User struct {
@@ -29,8 +35,27 @@ type User struct {
 }
 
 func (user *User) IsValidPassword(password string) bool {
-	hash := OldHashPassword(password, user.Id)
-	return user.HashedPassword == hash
+	if len(user.HashedPassword) < 3 {
+		log.Printf("To short hash for user: %s\n", user.Name)
+		return false
+	}
+
+	prefix := user.HashedPassword[0:3]
+	if prefix == HashPrefix {
+		salt, passHash := ExtractHashAndSalt(user.HashedPassword)
+		return passHash == HashPassword(password, salt)
+	}
+
+	return user.HashedPassword == OldHashPassword(password, user.Id)
+}
+
+func ExtractHashAndSalt(hash string) (string, string) {
+	splitedHash := strings.Split(hash[3:], ":")
+	if len(splitedHash) != 2 {
+		log.Printf("Can't split properly hash: %s\n", hash)
+		return "", ""
+	}
+	return splitedHash[0], splitedHash[1]
 }
 
 func HashPassword(password string, salt string) string {
