@@ -2,28 +2,49 @@ package helios
 
 import (
 	"database/sql"
-	"errors"
+	"net/http"
+
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/go-commons/logger"
+	"github.com/Wikia/go-commons/perfmonitoring"
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
-	"net/http"
-	"os"
+	"github.com/influxdb/influxdb/client"
+)
+
+const (
+	InfluxAppName    = "helios"
+	InfluxSeriesName = "metrics"
 )
 
 type Helios struct {
-	server *osin.Server
-	dbmap  *gorp.DbMap
+	server         *osin.Server
+	dbmap          *gorp.DbMap
+	influxdbClient *client.Client
 }
 
 func NewHelios() *Helios {
 	return new(Helios)
 }
 
+func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.Timer {
+	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, InfluxAppName, InfluxSeriesName)
+	timer := perfmonitoring.NewTimer(perfMon, "response_time")
+	timer.AddValue("method_name", methodName)
+	return timer
+}
+
+func (helios *Helios) closeTimer(timer *perfmonitoring.Timer) {
+	err := timer.Close()
+	logger.GetLogger().ErrorErr(err)
+}
+
 func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
+	timer := helios.createTimerForAPICall("tokenHandler")
+	defer helios.closeTimer(timer)
 	resp := helios.server.NewResponse()
 	defer resp.Close()
 	if ar := helios.server.HandleAccessRequest(resp, r); ar != nil {
@@ -40,7 +61,9 @@ func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
 		helios.server.FinishAccessRequest(resp, r, ar)
 	}
 	if resp.IsError && resp.InternalError != nil {
-		log.Printf("ERROR: %s\n", resp.InternalError)
+		logger.GetLogger().ErrorErr(resp.InternalError)
+	} else {
+		logger.GetLogger().Debug("Successfully processed tokenHandler")
 	}
 	osin.OutputJSON(resp, w, r)
 }
@@ -64,14 +87,18 @@ func (helios *Helios) initServer(redisConfig *config.RedisConfig) {
 	helios.server = osin.NewServer(osinConfig, redisStorage)
 }
 
-func (helios *Helios) Run() {
-	if len(os.Args) < 2 {
-		log.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
-		panic(errors.New("No data source provided"))
-	}
-	dataSourceName := os.Args[1]
+func (helios *Helios) Run(dataSourceName string) {
 
 	conf := config.LoadConfig("./config/config.json")
+	logger.InitLogger("helios", logger.LogLevelDebug)
+	logger.GetLogger().Info("Starting Helios")
+
+	var err error
+	helios.influxdbClient, err = perfmonitoring.NewInfluxdbClient()
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		panic(err)
+	}
 
 	helios.initDb(dataSourceName, conf.Db)
 	defer helios.dbmap.Db.Close()
@@ -80,8 +107,9 @@ func (helios *Helios) Run() {
 
 	http.HandleFunc("/token", helios.tokenHandler)
 
-	err := http.ListenAndServe(conf.Server.Address, nil)
+	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		logger.GetLogger().ErrorErr(err)
+		panic(err)
 	}
 }

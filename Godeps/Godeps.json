@@ -24,6 +24,11 @@
 			"ImportPath": "github.com/go-sql-driver/mysql",
 			"Comment": "v1.2-26-g9543750",
 			"Rev": "9543750295406ef070f7de8ae9c43ccddd44e15e"
+		},
+		{
+			"ImportPath": "github.com/influxdb/influxdb/client",
+			"Comment": "v0.8.6-69-gf49785a",
+			"Rev": "f49785a44f6eac03845a22a11afdc423f1ef2f0f"
 		}
 	]
 }
