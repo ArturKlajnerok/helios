@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	INFLUX_APP_NAME    = "helios"
-	INFLUX_SERIES_NAME = "metrics"
+	InfluxAppName    = "helios"
+	InfluxSeriesName = "metrics"
 )
 
 type Helios struct {
@@ -31,7 +31,7 @@ func NewHelios() *Helios {
 }
 
 func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.Timer {
-	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, INFLUX_APP_NAME, INFLUX_SERIES_NAME)
+	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, InfluxAppName, InfluxSeriesName)
 	timer := perfmonitoring.NewTimer(perfMon, "response_time")
 	timer.AddValue("method_name", methodName)
 	return timer
