@@ -39,9 +39,7 @@ func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.T
 
 func (helios *Helios) closeTimer(timer *perfmonitoring.Timer) {
 	err := timer.Close()
-	if err != nil {
-		logger.GetLogger().ErrorErr(err)
-	}
+	logger.GetLogger().ErrorErr(err)
 }
 
 func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +90,7 @@ func (helios *Helios) initServer(redisConfig *config.RedisConfig) {
 func (helios *Helios) Run(dataSourceName string) {
 
 	conf := config.LoadConfig("./config/config.json")
-	logger.InitLogger("helios", logger.LOG_LEVEL_DEBUG)
+	logger.InitLogger("helios", logger.LogLevelDebug)
 	logger.GetLogger().Info("Starting Helios")
 
 	var err error

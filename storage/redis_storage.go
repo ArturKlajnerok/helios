@@ -98,12 +98,9 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 	}
 
 	auth := new(osin.AuthorizeData)
-	if err := json.Unmarshal(authJSON, &auth); err != nil {
-		logger.GetLogger().ErrorErr(err)
-		return nil, err
-	}
-
-	return auth, nil
+	err = json.Unmarshal(authJSON, &auth)
+	logger.GetLogger().ErrorErr(err)
+	return auth, err
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
@@ -181,22 +178,16 @@ func (storage *RedisStorage) SetKey(key string, value []byte) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("SET", key, string(value))
-	if err != nil {
-		logger.GetLogger().ErrorErr(err)
-		return err
-	}
-	return nil
+	logger.GetLogger().ErrorErr(err)
+	return err
 }
 
 func (storage *RedisStorage) DeleteKey(keyName string) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("DEL", keyName)
-	if err != nil {
-		logger.GetLogger().ErrorErr(err)
-		return err
-	}
-	return nil
+	logger.GetLogger().ErrorErr(err)
+	return err
 }
 
 func createClientKey(id string) string {
@@ -220,9 +211,7 @@ func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {
 	access.Client = new(osin.DefaultClient)
 	access.AccessData = new(osin.AccessData)
 	access.AccessData.Client = new(osin.DefaultClient)
-	if err := json.Unmarshal(JSON, &access); err != nil {
-		logger.GetLogger().ErrorErr(err)
-		return nil, err
-	}
-	return access, nil
+	err := json.Unmarshal(JSON, &access)
+	logger.GetLogger().ErrorErr(err)
+	return access, err
 }
