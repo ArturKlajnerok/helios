@@ -99,7 +99,10 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 
 	auth := new(osin.AuthorizeData)
 	err = json.Unmarshal(authJSON, &auth)
-	logger.GetLogger().ErrorErr(err)
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		auth = nil
+	}
 	return auth, err
 }
 
@@ -212,6 +215,9 @@ func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {
 	access.AccessData = new(osin.AccessData)
 	access.AccessData.Client = new(osin.DefaultClient)
 	err := json.Unmarshal(JSON, &access)
-	logger.GetLogger().ErrorErr(err)
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		access = nil
+	}
 	return access, err
 }
