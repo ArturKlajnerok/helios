@@ -18,13 +18,18 @@ const (
 )
 
 type RedisStorage struct {
-	pool   *redis.Pool
-	prefix string
+	pool                        *redis.Pool
+	refreshTokenExpirationInSec int
+	prefix                      string
 }
 
-func NewRedisStorage(config *config.RedisConfig) *RedisStorage {
+func NewRedisStorage(config *config.RedisConfig, serverConfig *config.ServerConfig) *RedisStorage {
 	pool := newPool(config)
-	return &RedisStorage{pool: pool, prefix: config.Prefix}
+	return &RedisStorage{
+		pool: pool,
+		refreshTokenExpirationInSec: serverConfig.RefreshTokenExpirationInSec,
+		prefix: config.Prefix,
+	}
 }
 
 func newPool(config *config.RedisConfig) *redis.Pool {
@@ -119,10 +124,10 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 		return err
 	}
 
-	err = storage.SetKey(key, dataJSON)
+	err = storage.SetExpirableKey(key, dataJSON, int(data.ExpiresIn))
 	if data.RefreshToken != "" {
 		key_refresh := createRefreshKey(data.RefreshToken)
-		err = storage.SetKey(key_refresh, dataJSON)
+		err = storage.SetExpirableKey(key_refresh, dataJSON, storage.refreshTokenExpirationInSec)
 	}
 	return err
 }
@@ -181,6 +186,14 @@ func (storage *RedisStorage) SetKey(key string, value []byte) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("SET", key, string(value))
+	logger.GetLogger().ErrorErr(err)
+	return err
+}
+
+func (storage *RedisStorage) SetExpirableKey(key string, value []byte, expireInSec int) error {
+	db := storage.pool.Get()
+	defer db.Close()
+	_, err := db.Do("SET", key, string(value), "EX", expireInSec)
 	logger.GetLogger().ErrorErr(err)
 	return err
 }
