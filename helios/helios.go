@@ -1,7 +1,6 @@
 package helios
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/RangelReale/osin"
@@ -10,27 +9,15 @@ import (
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
-	"github.com/coopernurse/gorp"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type Helios struct {
 	server     *osin.Server
-	dbmap      *gorp.DbMap
 	controller *Controller
 }
 
 func NewHelios() *Helios {
 	return new(Helios)
-}
-
-func (helios *Helios) initDb(dataSourceName string, dbConfig *config.DbConfig) {
-	db, err := sql.Open(dbConfig.Type, dataSourceName)
-	if err != nil {
-		panic(err)
-	}
-	helios.dbmap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{dbConfig.Engine, dbConfig.Encoding}}
-	helios.dbmap.AddTableWithName(models.User{}, dbConfig.UserTable).SetKeys(true, dbConfig.UserTableKey)
 }
 
 func (helios *Helios) initServer(redisConfig *config.RedisConfig, serverConfig *config.ServerConfig) {
@@ -56,12 +43,12 @@ func (helios *Helios) Run(dataSourceName string) {
 		panic(err)
 	}
 
-	helios.initDb(dataSourceName, conf.Db)
-	defer helios.dbmap.Db.Close()
+	models.InitRepositoryFactory(dataSourceName, conf.Db)
+	defer models.Close()
 
 	helios.initServer(conf.Redis, conf.Server)
 
-	helios.controller = NewController(influxdbClient, helios.dbmap, helios.server)
+	helios.controller = NewController(influxdbClient, helios.server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {

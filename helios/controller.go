@@ -6,21 +6,20 @@ import (
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/go-commons/logger"
 	"github.com/Wikia/helios/models"
-	"github.com/coopernurse/gorp"
 	"github.com/influxdb/influxdb/client"
 )
 
 type Controller struct {
 	server         *osin.Server
-	dbmap          *gorp.DbMap
+	userRepository *models.UserRepository
 	influxdbClient *client.Client
 }
 
-func NewController(influxdbClient *client.Client, dbmap *gorp.DbMap, server *osin.Server) *Controller {
+func NewController(influxdbClient *client.Client, server *osin.Server) *Controller {
 
 	controller := new(Controller)
 	controller.influxdbClient = influxdbClient
-	controller.dbmap = dbmap
+	controller.userRepository = models.GetUserRepository()
 	controller.server = server
 
 	http.HandleFunc("/info", controller.infoHandler)
@@ -51,23 +50,25 @@ func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Reques
 	defer resp.Close()
 
 	if ar := controller.server.HandleAccessRequest(resp, r); ar != nil {
+		var err error
 		switch ar.Type {
 		case osin.PASSWORD:
-			user := models.User{Name: ar.Username}
-			user.FindByName(controller.dbmap)
-			if user.IsValidPassword(ar.Password) {
+			var user *models.User
+			user, err = controller.userRepository.FindByName(ar.Username, true)
+			if err == nil && user.IsValidPassword(ar.Password) {
 				ar.UserData = user.Id
 				ar.Authorized = true
 			}
 		case osin.REFRESH_TOKEN:
 			ar.Authorized = true
 		}
+
 		controller.server.FinishAccessRequest(resp, r, ar)
-	}
-	if resp.IsError && resp.InternalError != nil {
-		logger.GetLogger().ErrorErr(resp.InternalError)
-	} else {
-		logger.GetLogger().Debug("Successfully processed tokenHandler")
+		if resp.IsError && resp.InternalError != nil {
+			logger.GetLogger().ErrorErr(resp.InternalError)
+		} else if err == nil {
+			logger.GetLogger().Debug("Successfully processed tokenHandler")
+		}
 	}
 	osin.OutputJSON(resp, w, r)
 }
