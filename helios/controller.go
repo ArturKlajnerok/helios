@@ -1,26 +1,39 @@
 package helios
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/RangelReale/osin"
 	"github.com/Wikia/go-commons/logger"
+	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
+	"github.com/Wikia/helios/storage"
 	"github.com/influxdb/influxdb/client"
 )
 
 type Controller struct {
 	server         *osin.Server
 	userRepository *models.UserRepository
+	redisStorage   *storage.RedisStorage
 	influxdbClient *client.Client
+
+	allowMultipleAccessTokens bool
 }
 
-func NewController(influxdbClient *client.Client, server *osin.Server) *Controller {
+func NewController(
+	influxdbClient *client.Client,
+	server *osin.Server,
+	repositoryFactory *models.RepositoryFactory,
+	redisStorage *storage.RedisStorage,
+	serverConfig *config.ServerConfig) *Controller {
 
 	controller := new(Controller)
 	controller.influxdbClient = influxdbClient
-	controller.userRepository = models.GetUserRepository()
+	controller.userRepository = repositoryFactory.GetUserRepository()
+	controller.redisStorage = redisStorage
 	controller.server = server
+	controller.allowMultipleAccessTokens = serverConfig.AllowMultipleAccessTokens
 
 	http.HandleFunc("/info", controller.infoHandler)
 	http.HandleFunc("/token", controller.tokenHandler)
@@ -42,6 +55,24 @@ func (controller *Controller) infoHandler(w http.ResponseWriter, r *http.Request
 	osin.OutputJSON(resp, w, r)
 }
 
+func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error {
+	user, err := controller.userRepository.FindByName(ar.Username, true)
+	if err == nil && user.IsValidPassword(ar.Password) {
+		ar.UserData = fmt.Sprintf("%d", user.Id)
+		ar.Authorized = true
+		if !controller.allowMultipleAccessTokens {
+			var accessData *osin.AccessData
+			userId := fmt.Sprintf("%d", user.Id)
+			accessData, err = controller.redisStorage.GetAccessForUserId(userId)
+			if err == nil && accessData != nil {
+				ar.ForceAccessData = accessData //Reuse previous token if it exists
+			}
+		}
+	}
+
+	return err
+}
+
 func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	timer := createTimerForAPICall(controller.influxdbClient, "tokenHandler")
 	defer closeTimer(timer)
@@ -53,12 +84,7 @@ func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Reques
 		var err error
 		switch ar.Type {
 		case osin.PASSWORD:
-			var user *models.User
-			user, err = controller.userRepository.FindByName(ar.Username, true)
-			if err == nil && user.IsValidPassword(ar.Password) {
-				ar.UserData = user.Id
-				ar.Authorized = true
-			}
+			controller.tokenHandlerPassword(ar)
 		case osin.REFRESH_TOKEN:
 			ar.Authorized = true
 		}

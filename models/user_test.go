@@ -13,13 +13,13 @@ const (
 func TestIsValidPassword(t *testing.T) {
 	user := User{Id: UserID, HashedPassword: UserPasswordHash}
 	if !user.IsValidPassword(UserPassword) {
-		t.Error("Wrong passoword hash. Expected: ", UserPasswordHash)
+		t.Fatal("Wrong passoword hash. Expected: ", UserPasswordHash)
 	}
 }
 
 func TestHashPassword(t *testing.T) {
 	hash := hashPassword(UserPassword, UserID)
 	if hash != UserPasswordHash {
-		t.Error("Wrong hash generated. Expected: ", UserPasswordHash)
+		t.Fatal("Wrong hash generated. Expected: ", UserPasswordHash)
 	}
 }

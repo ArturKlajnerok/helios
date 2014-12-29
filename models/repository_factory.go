@@ -2,9 +2,7 @@ package models
 
 import (
 	"database/sql"
-	"errors"
 
-	"github.com/Wikia/go-commons/logger"
 	"github.com/Wikia/helios/config"
 	"github.com/coopernurse/gorp"
 	_ "github.com/go-sql-driver/mysql"
@@ -15,18 +13,13 @@ type RepositoryFactory struct {
 	userRepository *UserRepository
 }
 
-var repositoryFactory *RepositoryFactory
-
-func Close() {
-	if repositoryFactory != nil {
-		repositoryFactory.dbmap.Db.Close()
-		repositoryFactory = nil
-	}
+func (repositoryFactory *RepositoryFactory) Close() {
+	repositoryFactory.dbmap.Db.Close()
 }
 
-func InitRepositoryFactory(dataSourceName string, dbConfig *config.DbConfig) {
+func NewRepositoryFactory(dataSourceName string, dbConfig *config.DbConfig) *RepositoryFactory {
 
-	repositoryFactory = new(RepositoryFactory)
+	repositoryFactory := new(RepositoryFactory)
 	db, err := sql.Open(dbConfig.Type, dataSourceName)
 	if err != nil {
 		panic(err)
@@ -35,17 +28,10 @@ func InitRepositoryFactory(dataSourceName string, dbConfig *config.DbConfig) {
 	repositoryFactory.dbmap.AddTableWithName(User{}, dbConfig.UserTable).SetKeys(true, dbConfig.UserTableKey)
 
 	repositoryFactory.userRepository = NewUserRepository(repositoryFactory.dbmap)
+
+	return repositoryFactory
 }
 
-func ensureRepositoryFactoryWasInitialized() {
-	if repositoryFactory == nil {
-		err := errors.New("Repository Factory has not been initialized before accessing it")
-		logger.GetLogger().ErrorErr(err)
-		panic(err)
-	}
-}
-
-func GetUserRepository() *UserRepository {
-	ensureRepositoryFactoryWasInitialized()
+func (repositoryFactory *RepositoryFactory) GetUserRepository() *UserRepository {
 	return repositoryFactory.userRepository
 }

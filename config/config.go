@@ -11,6 +11,7 @@ type ServerConfig struct {
 	Address                     string `json:"address"`
 	TokenExpirationInSec        int    `json:"token_expiration_in_sec"`
 	RefreshTokenExpirationInSec int    `json:"refresh_token_expiration_in_sec"`
+	AllowMultipleAccessTokens   bool   `json:"allow_multiple_access_tokens"`
 }
 
 type DbConfig struct {

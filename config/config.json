@@ -2,7 +2,8 @@
 	"server" : {
 		"address" : ":8080",
 		"token_expiration_in_sec" : 3600,
-		"refresh_token_expiration_in_sec" : 15552000
+		"refresh_token_expiration_in_sec" : 15552000,
+		"allow_multiple_access_tokens" : false
 	},
 	"db" : {
 		"type" : "mysql",

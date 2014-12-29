@@ -20,14 +20,13 @@ func NewHelios() *Helios {
 	return new(Helios)
 }
 
-func (helios *Helios) initServer(redisConfig *config.RedisConfig, serverConfig *config.ServerConfig) {
+func (helios *Helios) initServer(redisStorage *storage.RedisStorage, serverConfig *config.ServerConfig) {
 	osinConfig := osin.NewServerConfig()
 	osinConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
 	osinConfig.AllowGetAccessRequest = true
 	osinConfig.AllowClientSecretInParams = true
 	osinConfig.AccessExpiration = int32(serverConfig.TokenExpirationInSec)
 
-	redisStorage := storage.NewRedisStorage(redisConfig, serverConfig)
 	helios.server = osin.NewServer(osinConfig, redisStorage)
 }
 
@@ -43,12 +42,15 @@ func (helios *Helios) Run(dataSourceName string) {
 		panic(err)
 	}
 
-	models.InitRepositoryFactory(dataSourceName, conf.Db)
-	defer models.Close()
+	repositoryFactory := models.NewRepositoryFactory(dataSourceName, conf.Db)
+	defer repositoryFactory.Close()
 
-	helios.initServer(conf.Redis, conf.Server)
+	redisStorage := storage.NewRedisStorage(conf.Redis, conf.Server)
+	defer redisStorage.DoClose()
 
-	helios.controller = NewController(influxdbClient, helios.server)
+	helios.initServer(redisStorage, conf.Server)
+
+	helios.controller = NewController(influxdbClient, helios.server, repositoryFactory, redisStorage, conf.Server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
