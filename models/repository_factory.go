@@ -17,10 +17,10 @@ func (repositoryFactory *RepositoryFactory) Close() {
 	repositoryFactory.dbmap.Db.Close()
 }
 
-func NewRepositoryFactory(dataSourceName string, dbConfig *config.DbConfig) *RepositoryFactory {
+func NewRepositoryFactory(dbConfig *config.DbConfig) *RepositoryFactory {
 
 	repositoryFactory := new(RepositoryFactory)
-	db, err := sql.Open(dbConfig.Type, dataSourceName)
+	db, err := sql.Open(dbConfig.Type, dbConfig.ConnectionString)
 	if err != nil {
 		panic(err)
 	}
