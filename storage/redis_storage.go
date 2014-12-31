@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,21 +21,40 @@ const (
 )
 
 type RedisStorage struct {
-	pool                        *redis.Pool
+	masterPool                  *redis.Pool
+	slavePool                   *redis.Pool
+	forceUseSlave               bool
 	refreshTokenExpirationInSec int
 	prefix                      string
 }
 
-func NewRedisStorage(config *config.RedisConfig, serverConfig *config.ServerConfig) *RedisStorage {
-	pool := newPool(config)
+func NewRedisStorage(
+	generalConfig *config.RedisGeneralConfig,
+	masterConfig *config.RedisInstanceConfig,
+	slaveConfig *config.RedisInstanceConfig,
+	serverConfig *config.ServerConfig) *RedisStorage {
+
+	var masterPool *redis.Pool
+	if masterConfig.UseThisInstance {
+		masterPool = newPool(masterConfig)
+	}
+	var slavePool *redis.Pool
+	if slaveConfig.UseThisInstance {
+		slavePool = newPool(slaveConfig)
+	}
+	if masterPool == nil && slavePool == nil {
+		panic(errors.New("Neither Redis master pool nor slave have been configured"))
+	}
 	return &RedisStorage{
-		pool: pool,
+		masterPool:                  masterPool,
+		slavePool:                   slavePool,
 		refreshTokenExpirationInSec: serverConfig.RefreshTokenExpirationInSec,
-		prefix: config.Prefix,
+		forceUseSlave:               false,
+		prefix:                      generalConfig.Prefix,
 	}
 }
 
-func newPool(config *config.RedisConfig) *redis.Pool {
+func newPool(config *config.RedisInstanceConfig) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     config.MaxIdleConn,
 		IdleTimeout: config.IdleTimeoutSec * time.Second,
@@ -53,14 +73,22 @@ func newPool(config *config.RedisConfig) *redis.Pool {
 	}
 }
 
+func (storage *RedisStorage) SetForceUseSlave(forceUseSlave bool) {
+	storage.forceUseSlave = forceUseSlave
+}
+
 //This is an inteface function called after each reponse has been handled. We do not
 //want to recreate the storage object for each request, so this function is empty
 func (storage *RedisStorage) Close() {}
 
 func (storage *RedisStorage) DoClose() {
-	if storage.pool != nil {
-		storage.pool.Close()
-		storage.pool = nil
+	if storage.masterPool != nil {
+		storage.masterPool.Close()
+		storage.masterPool = nil
+	}
+	if storage.slavePool != nil {
+		storage.slavePool.Close()
+		storage.slavePool = nil
 	}
 }
 
@@ -69,7 +97,7 @@ func (storage *RedisStorage) Clone() osin.Storage {
 }
 
 func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
-	key := createClientKey(id)
+	key := storage.createClientKey(id)
 	clientJSON, err := storage.GetKey(key, true)
 	if err != nil {
 		return nil, err
@@ -85,7 +113,7 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 }
 
 func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
-	key := createClientKey(id)
+	key := storage.createClientKey(id)
 	clientJSON, err := json.Marshal(client)
 	if err != nil {
 		logger.GetLogger().ErrorErr(err)
@@ -96,7 +124,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 }
 
 func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	key := createAuthorizeKey(data.Code)
+	key := storage.createAuthorizeKey(data.Code)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		logger.GetLogger().ErrorErr(err)
@@ -107,7 +135,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 }
 
 func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
-	key := createAuthorizeKey(code)
+	key := storage.createAuthorizeKey(code)
 	authJSON, err := storage.GetKey(key, true)
 	if err != nil {
 		return nil, err
@@ -123,12 +151,12 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
-	key := createAuthorizeKey(code)
+	key := storage.createAuthorizeKey(code)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
-	key := createAccessKey(data.AccessToken)
+	key := storage.createAccessKey(data.AccessToken)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		logger.GetLogger().ErrorErr(err)
@@ -137,7 +165,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 
 	err = storage.SetExpirableKey(key, dataJSON, int(data.ExpiresIn))
 	if data.RefreshToken != "" {
-		key_refresh := createRefreshKey(data.RefreshToken)
+		key_refresh := storage.createRefreshKey(data.RefreshToken)
 		err = storage.SetExpirableKey(key_refresh, dataJSON, storage.refreshTokenExpirationInSec)
 	}
 	if err == nil {
@@ -147,7 +175,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 }
 
 func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) {
-	key := createAccessKey(token)
+	key := storage.createAccessKey(token)
 	accessJSON, err := storage.GetKey(key, true)
 	if err != nil {
 		return nil, err
@@ -157,12 +185,12 @@ func (storage *RedisStorage) LoadAccess(token string) (*osin.AccessData, error) 
 }
 
 func (storage *RedisStorage) RemoveAccess(token string) error {
-	key := createAccessKey(token)
+	key := storage.createAccessKey(token)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error) {
-	key := createRefreshKey(token)
+	key := storage.createRefreshKey(token)
 	refreshJSON, storeErr := storage.GetKey(key, true)
 	if storeErr != nil {
 		return nil, storeErr
@@ -181,17 +209,17 @@ func (storage *RedisStorage) LoadRefresh(token string) (*osin.AccessData, error)
 }
 
 func (storage *RedisStorage) RemoveRefresh(token string) error {
-	key := createRefreshKey(token)
+	key := storage.createRefreshKey(token)
 	return storage.DeleteKey(key)
 }
 
 func (storage *RedisStorage) SaveAccessTokenForUserId(data *osin.AccessData) error {
-	key := createUserIdAccessKey(data.UserData.(string))
+	key := storage.createUserIdAccessKey(data.UserData.(string))
 	return storage.SetExpirableKey(key, []byte(data.AccessToken), int(data.ExpiresIn))
 }
 
 func (storage *RedisStorage) GetAccessForUserId(userId string) (*osin.AccessData, error) {
-	key := createUserIdAccessKey(userId)
+	key := storage.createUserIdAccessKey(userId)
 	accessToken, err := storage.GetKey(key, false)
 	if err != nil {
 		return nil, err
@@ -203,9 +231,16 @@ func (storage *RedisStorage) GetAccessForUserId(userId string) (*osin.AccessData
 }
 
 func (storage *RedisStorage) GetKey(keyName string, mustExist bool) ([]byte, error) {
-	db := storage.pool.Get()
+	pool, err := storage.getPoolForRead()
+	if err != nil {
+		return nil, err
+	}
+
+	db := pool.Get()
 	defer db.Close()
-	value, err := redis.String(db.Do("GET", keyName))
+
+	var value string
+	value, err = redis.String(db.Do("GET", keyName))
 	if err != nil {
 		if mustExist || err != redis.ErrNil {
 			logger.GetLogger().Error(fmt.Sprintf("Error while getting key %s: %s", keyName, err.Error()))
@@ -219,47 +254,112 @@ func (storage *RedisStorage) GetKey(keyName string, mustExist bool) ([]byte, err
 }
 
 func (storage *RedisStorage) SetKey(key string, value []byte) error {
-	db := storage.pool.Get()
+	pool, err := storage.getPoolForRead()
+	if err != nil {
+		return err
+	}
+
+	db := pool.Get()
 	defer db.Close()
-	_, err := db.Do("SET", key, string(value))
+	_, err = db.Do("SET", key, string(value))
 	logger.GetLogger().ErrorErr(err)
 	return err
 }
 
 func (storage *RedisStorage) SetExpirableKey(key string, value []byte, expireInSec int) error {
-	db := storage.pool.Get()
+	pool, err := storage.getPoolForRead()
+	if err != nil {
+		return err
+	}
+
+	db := pool.Get()
 	defer db.Close()
-	_, err := db.Do("SET", key, string(value), "EX", expireInSec)
+	_, err = db.Do("SET", key, string(value), "EX", expireInSec)
 	logger.GetLogger().ErrorErr(err)
 	return err
 }
 
 func (storage *RedisStorage) DeleteKey(keyName string) error {
-	db := storage.pool.Get()
+	pool, err := storage.getPoolForRead()
+	if err != nil {
+		return err
+	}
+
+	db := pool.Get()
 	defer db.Close()
-	_, err := db.Do("DEL", keyName)
+	_, err = db.Do("DEL", keyName)
 	logger.GetLogger().ErrorErr(err)
 	return err
 }
 
-func createClientKey(id string) string {
-	return ClientPrefix + id
+func (storage *RedisStorage) getPoolForWrite() (*redis.Pool, error) {
+	if storage.forceUseSlave {
+		err := errors.New("Use slave flag is on, cannot get redis pool for writing")
+		logger.GetLogger().ErrorErr(err)
+		return nil, err
+	}
+
+	if storage.masterPool == nil {
+		err := errors.New("Master pool has not been configured, cannot get redis pool for writing")
+		logger.GetLogger().ErrorErr(err)
+		return nil, err
+	}
+
+	return storage.masterPool, nil
 }
 
-func createAuthorizeKey(code string) string {
-	return AuthorizePrefix + code
+func (storage *RedisStorage) getPoolForRead() (*redis.Pool, error) {
+	if storage.forceUseSlave && storage.slavePool == nil {
+		err := errors.New("Use slave flag is on, but slave pool has not been configured, cannot get redis pool for reading")
+		logger.GetLogger().ErrorErr(err)
+		return nil, err
+	}
+
+	if storage.masterPool == nil || storage.forceUseSlave {
+		return storage.slavePool, nil
+	} else {
+		return storage.masterPool, nil
+	}
 }
 
-func createAccessKey(token string) string {
-	return AccessPrefix + token
+func (storage *RedisStorage) PingMaster() error {
+	return storage.Ping(storage.masterPool)
 }
 
-func createRefreshKey(token string) string {
-	return RefreshPrefix + token
+func (storage *RedisStorage) PingSlave() error {
+	return storage.Ping(storage.slavePool)
 }
 
-func createUserIdAccessKey(userId string) string {
-	return UserIdAccessKeyPrefix + userId
+func (storage *RedisStorage) Ping(pool *redis.Pool) error {
+	if pool == nil {
+		return errors.New("Pool is not set")
+	}
+	db := pool.Get()
+	defer db.Close()
+
+	_, err := db.Do("PING")
+
+	return err
+}
+
+func (storage *RedisStorage) createClientKey(id string) string {
+	return storage.prefix + ClientPrefix + id
+}
+
+func (storage *RedisStorage) createAuthorizeKey(code string) string {
+	return storage.prefix + AuthorizePrefix + code
+}
+
+func (storage *RedisStorage) createAccessKey(token string) string {
+	return storage.prefix + AccessPrefix + token
+}
+
+func (storage *RedisStorage) createRefreshKey(token string) string {
+	return storage.prefix + RefreshPrefix + token
+}
+
+func (storage *RedisStorage) createUserIdAccessKey(userId string) string {
+	return storage.prefix + UserIdAccessKeyPrefix + userId
 }
 
 func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {

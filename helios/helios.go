@@ -43,10 +43,12 @@ func (helios *Helios) Run() {
 	}
 
 	repositoryFactory := models.NewRepositoryFactory(&conf.Db)
-	defer repositoryFactory.Close()
+	redisStorage := storage.NewRedisStorage(&conf.RedisGeneral, &conf.RedisMaster, &conf.RedisSlave, &conf.Server)
+	statusManager := NewStatusManager(&conf.Server, redisStorage)
 
-	redisStorage := storage.NewRedisStorage(&conf.Redis, &conf.Server)
+	defer statusManager.Close()
 	defer redisStorage.DoClose()
+	defer repositoryFactory.Close()
 
 	helios.initServer(redisStorage, &conf.Server)
 
