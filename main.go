@@ -1,18 +1,29 @@
 package main
 
 import (
-	"errors"
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/Wikia/helios/helios"
 )
 
+const (
+	ConfigPath = "./config/config.ini"
+)
+
 func main() {
-	if len(os.Args) < 2 {
-		log.Println("Provide mysql data source, like: user:pass@tcp(host:port)/dbname")
-		panic(errors.New("No data source provided"))
+
+	displayHelp := false
+	configFile := ConfigPath
+	if len(os.Args) == 2 && os.Args[1] == "--help" || len(os.Args) > 2 {
+		displayHelp = true
+	} else if len(os.Args) == 2 {
+		configFile = os.Args[1]
 	}
-	dataSourceName := os.Args[1]
-	helios.NewHelios().Run(dataSourceName)
+	if displayHelp {
+		fmt.Printf("Helios OAuth service. Can be started with one argument - path to config file.\n"+
+			"If no arguments are provided the default %s will be used.\n", configFile)
+	} else {
+		helios.NewHelios().Run(configFile)
+	}
 }

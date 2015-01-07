@@ -1,6 +1,7 @@
 package helios
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/RangelReale/osin"
@@ -9,6 +10,10 @@ import (
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
+)
+
+const (
+	AppName = "helios"
 )
 
 type Helios struct {
@@ -25,16 +30,16 @@ func (helios *Helios) initServer(redisStorage *storage.RedisStorage, serverConfi
 	osinConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
 	osinConfig.AllowGetAccessRequest = true
 	osinConfig.AllowClientSecretInParams = true
-	osinConfig.AccessExpiration = int32(serverConfig.TokenExpirationInSec)
+	osinConfig.AccessExpiration = int32(serverConfig.AccessTokenExpirationInSec)
 
 	helios.server = osin.NewServer(osinConfig, redisStorage)
 }
 
-func (helios *Helios) Run(dataSourceName string) {
+func (helios *Helios) Run(configPath string) {
 
-	conf := config.LoadConfig("./config/config.json")
-	logger.InitLogger("helios", logger.LogLevelDebug)
-	logger.GetLogger().Info("Starting Helios")
+	conf := config.LoadConfig(configPath)
+	logger.InitLogger(AppName, logger.LogLevelDebug)
+	logger.GetLogger().Info(fmt.Sprintf("Starting %s", AppName))
 
 	influxdbClient, err := perfmonitoring.NewInfluxdbClient()
 	if err != nil {
@@ -42,15 +47,15 @@ func (helios *Helios) Run(dataSourceName string) {
 		panic(err)
 	}
 
-	repositoryFactory := models.NewRepositoryFactory(dataSourceName, conf.Db)
-	defer repositoryFactory.Close()
+	storageFactory := models.NewStorageFactory(&conf.Db)
+	defer storageFactory.Close()
 
-	redisStorage := storage.NewRedisStorage(conf.Redis, conf.Server)
+	redisStorage := storage.NewRedisStorage(&conf.Redis, &conf.Server)
 	defer redisStorage.DoClose()
 
-	helios.initServer(redisStorage, conf.Server)
+	helios.initServer(redisStorage, &conf.Server)
 
-	helios.controller = NewController(influxdbClient, helios.server, repositoryFactory, redisStorage, conf.Server)
+	helios.controller = NewController(influxdbClient, helios.server, storageFactory, redisStorage, &conf.Server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
