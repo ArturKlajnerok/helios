@@ -47,15 +47,15 @@ func (helios *Helios) Run(configPath string) {
 		panic(err)
 	}
 
-	repositoryFactory := models.NewRepositoryFactory(&conf.Db)
-	defer repositoryFactory.Close()
+	storageFactory := models.NewStorageFactory(&conf.Db)
+	defer storageFactory.Close()
 
 	redisStorage := storage.NewRedisStorage(&conf.Redis, &conf.Server)
 	defer redisStorage.DoClose()
 
 	helios.initServer(redisStorage, &conf.Server)
 
-	helios.controller = NewController(influxdbClient, helios.server, repositoryFactory, redisStorage, &conf.Server)
+	helios.controller = NewController(influxdbClient, helios.server, storageFactory, redisStorage, &conf.Server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
