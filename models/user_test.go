@@ -27,13 +27,13 @@ func TestIsValidPassword(t *testing.T) {
 func TestHashPassword(t *testing.T) {
 	hash := HashPassword(UserPassword, UserSalt)
 	if hash != UserPasswordHash {
-		t.Error("Wrong hash generated. Expected: ", UserPasswordHash)
+		t.Error("Wrong hash generated. Expected:", UserPasswordHash, "Actual:", hash)
 	}
 }
 
 func TestOldHashPassword(t *testing.T) {
 	hash := OldHashPassword(UserPassword, UserID)
 	if hash != UserOldPasswordHash {
-		t.Error("Wrong hash generated. Expected: ", UserOldPasswordHash)
+		t.Error("Wrong hash generated. Expected:", UserOldPasswordHash, "Actual:", hash)
 	}
 }
