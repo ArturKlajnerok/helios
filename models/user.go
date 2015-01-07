@@ -50,7 +50,7 @@ func (user *User) IsValidPassword(password string) bool {
 }
 
 func ExtractHashAndSalt(hash string) (string, string) {
-	splitedHash := strings.Split(hash[3:], ":")
+	splitedHash := strings.SplitN(hash[3:], ":", 2)
 	if len(splitedHash) != 2 {
 		log.Printf("Can't split properly hash: %s\n", hash)
 		return "", ""
