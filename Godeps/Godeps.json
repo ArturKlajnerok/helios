@@ -3,6 +3,10 @@
 	"GoVersion": "go1.3.3",
 	"Deps": [
 		{
+			"ImportPath": "code.google.com/p/gcfg",
+			"Rev": "c2d3050044d05357eaf6c3547249ba57c5e235cb"
+		},
+		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-12",
 			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
@@ -10,6 +14,18 @@
 		{
 			"ImportPath": "github.com/RangelReale/osin",
 			"Rev": "449d8676d2d0d8e2fe88fe4f5189debd23e1f354"
+		},
+		{
+			"ImportPath": "github.com/Wikia/go-commons/logger",
+			"Rev": "7213c12f1cfc39e328736a19156e06265516b2ae"
+		},
+		{
+			"ImportPath": "github.com/Wikia/go-commons/perfmonitoring",
+			"Rev": "7213c12f1cfc39e328736a19156e06265516b2ae"
+		},
+		{
+			"ImportPath": "github.com/Wikia/go-commons/settings",
+			"Rev": "7213c12f1cfc39e328736a19156e06265516b2ae"
 		},
 		{
 			"ImportPath": "github.com/coopernurse/gorp",
