@@ -1,7 +1,6 @@
 package helios
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/RangelReale/osin"
@@ -10,94 +9,24 @@ import (
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
-	"github.com/coopernurse/gorp"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/influxdb/influxdb/client"
-)
-
-const (
-	InfluxAppName    = "helios"
-	InfluxSeriesName = "metrics"
 )
 
 type Helios struct {
-	server         *osin.Server
-	dbmap          *gorp.DbMap
-	influxdbClient *client.Client
+	server     *osin.Server
+	controller *Controller
 }
 
 func NewHelios() *Helios {
 	return new(Helios)
 }
 
-func (helios *Helios) createTimerForAPICall(methodName string) *perfmonitoring.Timer {
-	perfMon := perfmonitoring.NewPerfMonitoring(helios.influxdbClient, InfluxAppName, InfluxSeriesName)
-	timer := perfmonitoring.NewTimer(perfMon, "response_time")
-	timer.AddValue("method_name", methodName)
-	return timer
-}
-
-func (helios *Helios) closeTimer(timer *perfmonitoring.Timer) {
-	err := timer.Close()
-	logger.GetLogger().ErrorErr(err)
-}
-
-func (helios *Helios) infoHandler(w http.ResponseWriter, r *http.Request) {
-	resp := helios.server.NewResponse()
-	defer resp.Close()
-
-	if ir := helios.server.HandleInfoRequest(resp, r); ir != nil {
-		helios.server.FinishInfoRequest(resp, r, ir)
-		resp.Output["user_id"] = ir.AccessData.UserData
-	}
-	osin.OutputJSON(resp, w, r)
-}
-
-func (helios *Helios) tokenHandler(w http.ResponseWriter, r *http.Request) {
-	timer := helios.createTimerForAPICall("tokenHandler")
-	defer helios.closeTimer(timer)
-
-	resp := helios.server.NewResponse()
-	defer resp.Close()
-
-	if ar := helios.server.HandleAccessRequest(resp, r); ar != nil {
-		switch ar.Type {
-		case osin.PASSWORD:
-			user := models.User{Name: ar.Username}
-			user.FindByName(helios.dbmap)
-			if user.IsValidPassword(ar.Password) {
-				ar.UserData = user.Id
-				ar.Authorized = true
-			}
-		case osin.REFRESH_TOKEN:
-			ar.Authorized = true
-		}
-		helios.server.FinishAccessRequest(resp, r, ar)
-	}
-	if resp.IsError && resp.InternalError != nil {
-		logger.GetLogger().ErrorErr(resp.InternalError)
-	} else {
-		logger.GetLogger().Debug("Successfully processed tokenHandler")
-	}
-	osin.OutputJSON(resp, w, r)
-}
-
-func (helios *Helios) initDb(dataSourceName string, dbConfig *config.DbConfig) {
-	db, err := sql.Open(dbConfig.Type, dataSourceName)
-	if err != nil {
-		panic(err)
-	}
-	helios.dbmap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{dbConfig.Engine, dbConfig.Encoding}}
-	helios.dbmap.AddTableWithName(models.User{}, dbConfig.UserTable).SetKeys(true, dbConfig.UserTableKey)
-}
-
-func (helios *Helios) initServer(redisConfig *config.RedisConfig) {
+func (helios *Helios) initServer(redisStorage *storage.RedisStorage, serverConfig *config.ServerConfig) {
 	osinConfig := osin.NewServerConfig()
 	osinConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
 	osinConfig.AllowGetAccessRequest = true
 	osinConfig.AllowClientSecretInParams = true
+	osinConfig.AccessExpiration = int32(serverConfig.TokenExpirationInSec)
 
-	redisStorage := storage.NewRedisStorage(redisConfig)
 	helios.server = osin.NewServer(osinConfig, redisStorage)
 }
 
@@ -107,20 +36,21 @@ func (helios *Helios) Run(dataSourceName string) {
 	logger.InitLogger("helios", logger.LogLevelDebug)
 	logger.GetLogger().Info("Starting Helios")
 
-	var err error
-	helios.influxdbClient, err = perfmonitoring.NewInfluxdbClient()
+	influxdbClient, err := perfmonitoring.NewInfluxdbClient()
 	if err != nil {
 		logger.GetLogger().ErrorErr(err)
 		panic(err)
 	}
 
-	helios.initDb(dataSourceName, conf.Db)
-	defer helios.dbmap.Db.Close()
+	repositoryFactory := models.NewRepositoryFactory(dataSourceName, conf.Db)
+	defer repositoryFactory.Close()
 
-	helios.initServer(conf.Redis)
+	redisStorage := storage.NewRedisStorage(conf.Redis, conf.Server)
+	defer redisStorage.DoClose()
 
-	http.HandleFunc("/info", helios.infoHandler)
-	http.HandleFunc("/token", helios.tokenHandler)
+	helios.initServer(redisStorage, conf.Server)
+
+	helios.controller = NewController(influxdbClient, helios.server, repositoryFactory, redisStorage, conf.Server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
