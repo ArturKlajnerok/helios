@@ -4,7 +4,13 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"strings"
 	"time"
+)
+
+const (
+	HashPrefix = ":B:"
 )
 
 type User struct {
@@ -28,11 +34,42 @@ type User struct {
 }
 
 func (user *User) IsValidPassword(password string) bool {
-	hash := hashPassword(password, user.Id)
-	return user.HashedPassword == hash
+	if len(user.HashedPassword) < 3 {
+		log.Printf("To short hash for user: %s\n", user.Name)
+		return false
+	}
+
+	prefix := user.HashedPassword[0:3]
+	if prefix == HashPrefix {
+		salt, passHash := ExtractHashAndSalt(user.HashedPassword)
+		return passHash == HashPassword(password, salt)
+	}
+
+	return user.HashedPassword == OldHashPassword(password, user.Id)
 }
 
-func hashPassword(password string, userId int64) string {
+func ExtractHashAndSalt(hash string) (string, string) {
+	splitedHash := strings.SplitN(hash[3:], ":", 2)
+	if len(splitedHash) != 2 {
+		log.Printf("Can't split properly hash: %s\n", hash)
+		return "", ""
+	}
+	return splitedHash[0], splitedHash[1]
+}
+
+func HashPassword(password string, salt string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(password))
+	hash := hex.EncodeToString(hasher.Sum(nil))
+
+	hash = fmt.Sprintf("%s-%s", salt, hash)
+
+	hasher.Reset()
+	hasher.Write([]byte(hash))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func OldHashPassword(password string, userId int64) string {
 	hasher := md5.New()
 	hasher.Write([]byte(password))
 	hash := hex.EncodeToString(hasher.Sum(nil))

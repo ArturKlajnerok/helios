@@ -14,7 +14,7 @@ import (
 
 type Controller struct {
 	server         *osin.Server
-	userRepository *models.UserRepository
+	userStorage    *models.UserStorage
 	redisStorage   *storage.RedisStorage
 	influxdbClient *client.Client
 
@@ -24,13 +24,13 @@ type Controller struct {
 func NewController(
 	influxdbClient *client.Client,
 	server *osin.Server,
-	repositoryFactory *models.RepositoryFactory,
+	storageFactory *models.StorageFactory,
 	redisStorage *storage.RedisStorage,
 	serverConfig *config.ServerConfig) *Controller {
 
 	controller := new(Controller)
 	controller.influxdbClient = influxdbClient
-	controller.userRepository = repositoryFactory.GetUserRepository()
+	controller.userStorage = storageFactory.GetUserStorage()
 	controller.redisStorage = redisStorage
 	controller.server = server
 	controller.allowMultipleAccessTokens = serverConfig.AllowMultipleAccessTokens
@@ -56,7 +56,7 @@ func (controller *Controller) infoHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error {
-	user, err := controller.userRepository.FindByName(ar.Username, true)
+	user, err := controller.userStorage.FindByName(ar.Username, true)
 	if err == nil && user.IsValidPassword(ar.Password) {
 		ar.UserData = fmt.Sprintf("%d", user.Id)
 		ar.Authorized = true
@@ -68,6 +68,8 @@ func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error
 				ar.ForceAccessData = accessData //Reuse previous token if it exists
 			}
 		}
+	} else {
+		ar.Authorized = false
 	}
 
 	return err
@@ -84,13 +86,13 @@ func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Reques
 		var err error
 		switch ar.Type {
 		case osin.PASSWORD:
-			controller.tokenHandlerPassword(ar)
+			err = controller.tokenHandlerPassword(ar)
 		case osin.REFRESH_TOKEN:
 			ar.Authorized = true
 		}
 
 		controller.server.FinishAccessRequest(resp, r, ar)
-		if resp.IsError && resp.InternalError != nil {
+		if resp.InternalError != nil {
 			logger.GetLogger().ErrorErr(resp.InternalError)
 		} else if err == nil {
 			logger.GetLogger().Debug("Successfully processed tokenHandler")

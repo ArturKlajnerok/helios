@@ -1,6 +1,7 @@
 package helios
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/RangelReale/osin"
@@ -9,6 +10,10 @@ import (
 	"github.com/Wikia/helios/config"
 	"github.com/Wikia/helios/models"
 	"github.com/Wikia/helios/storage"
+)
+
+const (
+	AppName = "helios"
 )
 
 type Helios struct {
@@ -25,16 +30,16 @@ func (helios *Helios) initServer(redisStorage *storage.RedisStorage, serverConfi
 	osinConfig.AllowedAccessTypes = osin.AllowedAccessType{osin.PASSWORD, osin.REFRESH_TOKEN}
 	osinConfig.AllowGetAccessRequest = true
 	osinConfig.AllowClientSecretInParams = true
-	osinConfig.AccessExpiration = int32(serverConfig.TokenExpirationInSec)
+	osinConfig.AccessExpiration = int32(serverConfig.AccessTokenExpirationInSec)
 
 	helios.server = osin.NewServer(osinConfig, redisStorage)
 }
 
-func (helios *Helios) Run() {
+func (helios *Helios) Run(configPath string) {
 
-	conf := config.LoadConfig("./config/config.ini")
-	logger.InitLogger("helios", logger.LogLevelDebug)
-	logger.GetLogger().Info("Starting Helios")
+	conf := config.LoadConfig(configPath)
+	logger.InitLogger(AppName, logger.LogLevelDebug)
+	logger.GetLogger().Info(fmt.Sprintf("Starting %s", AppName))
 
 	influxdbClient, err := perfmonitoring.NewInfluxdbClient()
 	if err != nil {
@@ -42,17 +47,17 @@ func (helios *Helios) Run() {
 		panic(err)
 	}
 
-	repositoryFactory := models.NewRepositoryFactory(&conf.Db)
+	storageFactory := models.NewStorageFactory(&conf.Db)
 	redisStorage := storage.NewRedisStorage(&conf.RedisGeneral, &conf.RedisMaster, &conf.RedisSlave, &conf.Server)
 	statusManager := NewStatusManager(&conf.Server, redisStorage)
 
 	defer statusManager.Close()
 	defer redisStorage.DoClose()
-	defer repositoryFactory.Close()
+	defer storageFactory.Close()
 
 	helios.initServer(redisStorage, &conf.Server)
 
-	helios.controller = NewController(influxdbClient, helios.server, repositoryFactory, redisStorage, &conf.Server)
+	helios.controller = NewController(influxdbClient, helios.server, storageFactory, redisStorage, &conf.Server)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {
