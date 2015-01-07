@@ -7,12 +7,11 @@ import (
 )
 
 const (
-	InfluxAppName    = "helios"
 	InfluxSeriesName = "metrics"
 )
 
 func createTimerForAPICall(influxdbClient *client.Client, methodName string) *perfmonitoring.Timer {
-	perfMon := perfmonitoring.NewPerfMonitoring(influxdbClient, InfluxAppName, InfluxSeriesName)
+	perfMon := perfmonitoring.NewPerfMonitoring(influxdbClient, AppName, InfluxSeriesName)
 	timer := perfmonitoring.NewTimer(perfMon, "response_time")
 	timer.AddValue("method_name", methodName)
 	return timer

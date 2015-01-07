@@ -10,7 +10,7 @@ import (
 
 type ServerConfig struct {
 	Address                     string `gcfg:"address"`
-	TokenExpirationInSec        int    `gcfg:"token-expiration-in-sec"`
+	AccessTokenExpirationInSec  int    `gcfg:"access-token-expiration-in-sec"`
 	RefreshTokenExpirationInSec int    `gcfg:"refresh-token-expiration-in-sec"`
 	AllowMultipleAccessTokens   bool   `gcfg:"allow-multiple-access-tokens"`
 }
