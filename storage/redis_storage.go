@@ -2,10 +2,12 @@ package storage
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/RangelReale/osin"
+	"github.com/Wikia/go-commons/logger"
 	"github.com/Wikia/helios/config"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 const (
@@ -32,6 +34,7 @@ func newPool(config *config.RedisConfig) *redis.Pool {
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", config.Address)
 			if err != nil {
+				logger.GetLogger().ErrorErr(err)
 				return nil, err
 			}
 			return c, err
@@ -58,6 +61,7 @@ func (storage *RedisStorage) GetClient(id string) (osin.Client, error) {
 
 	client := new(osin.DefaultClient)
 	if err := json.Unmarshal(clientJSON, &client); err != nil {
+		logger.GetLogger().ErrorErr(err)
 		return nil, err
 	}
 
@@ -68,6 +72,7 @@ func (storage *RedisStorage) SetClient(id string, client osin.Client) error {
 	key := createClientKey(id)
 	clientJSON, err := json.Marshal(client)
 	if err != nil {
+		logger.GetLogger().ErrorErr(err)
 		return err
 	}
 
@@ -78,6 +83,7 @@ func (storage *RedisStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 	key := createAuthorizeKey(data.Code)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
+		logger.GetLogger().ErrorErr(err)
 		return err
 	}
 
@@ -92,11 +98,12 @@ func (storage *RedisStorage) LoadAuthorize(code string) (*osin.AuthorizeData, er
 	}
 
 	auth := new(osin.AuthorizeData)
-	if err := json.Unmarshal(authJSON, &auth); err != nil {
-		return nil, err
+	err = json.Unmarshal(authJSON, &auth)
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		auth = nil
 	}
-
-	return auth, nil
+	return auth, err
 }
 
 func (storage *RedisStorage) RemoveAuthorize(code string) error {
@@ -108,6 +115,7 @@ func (storage *RedisStorage) SaveAccess(data *osin.AccessData) error {
 	key := createAccessKey(data.AccessToken)
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
+		logger.GetLogger().ErrorErr(err)
 		return err
 	}
 
@@ -163,6 +171,7 @@ func (storage *RedisStorage) GetKey(keyName string) ([]byte, error) {
 	defer db.Close()
 	value, err := redis.String(db.Do("GET", keyName))
 	if err != nil {
+		logger.GetLogger().ErrorErr(err)
 		return nil, err
 	}
 	return []byte(value), nil
@@ -172,20 +181,16 @@ func (storage *RedisStorage) SetKey(key string, value []byte) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("SET", key, string(value))
-	if err != nil {
-		return err
-	}
-	return nil
+	logger.GetLogger().ErrorErr(err)
+	return err
 }
 
 func (storage *RedisStorage) DeleteKey(keyName string) error {
 	db := storage.pool.Get()
 	defer db.Close()
 	_, err := db.Do("DEL", keyName)
-	if err != nil {
-		return err
-	}
-	return nil
+	logger.GetLogger().ErrorErr(err)
+	return err
 }
 
 func createClientKey(id string) string {
@@ -209,8 +214,10 @@ func unmarshallAccess(JSON []byte) (*osin.AccessData, error) {
 	access.Client = new(osin.DefaultClient)
 	access.AccessData = new(osin.AccessData)
 	access.AccessData.Client = new(osin.DefaultClient)
-	if err := json.Unmarshal(JSON, &access); err != nil {
-		return nil, err
+	err := json.Unmarshal(JSON, &access)
+	if err != nil {
+		logger.GetLogger().ErrorErr(err)
+		access = nil
 	}
-	return access, nil
+	return access, err
 }
