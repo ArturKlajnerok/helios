@@ -7,10 +7,14 @@ import (
 	"github.com/Wikia/helios/helios"
 )
 
+const (
+	ConfigPath = "./config/config.ini"
+)
+
 func main() {
 
 	displayHelp := false
-	configFile := "./config/config.ini"
+	configFile := ConfigPath
 	if len(os.Args) == 2 && os.Args[1] == "--help" || len(os.Args) > 2 {
 		displayHelp = true
 	} else if len(os.Args) == 2 {
