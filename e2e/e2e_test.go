@@ -20,9 +20,9 @@ const (
 	TestClientSecret = "aabbccdd"
 )
 
-func getJsonString(objmap map[string]*json.RawMessage, key string, t *testing.T) string {
+func getJsonString(objMap map[string]*json.RawMessage, key string, t *testing.T) string {
 	var str string
-	v := objmap[key]
+	v := objMap[key]
 	if v == nil {
 		return ""
 	}
@@ -34,12 +34,12 @@ func getJsonString(objmap map[string]*json.RawMessage, key string, t *testing.T)
 }
 
 func unmarshall(jsonData []byte, t *testing.T) map[string]*json.RawMessage {
-	var objmap map[string]*json.RawMessage
-	err := json.Unmarshal(jsonData, &objmap)
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(jsonData, &objMap)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Error unmarshalling data: %s", string(jsonData)), err)
 	}
-	return objmap
+	return objMap
 }
 
 func getResponse(address string, t *testing.T) []byte {
@@ -69,12 +69,12 @@ func getTokenResponse(userName string, password string, t *testing.T) map[string
 
 	body := getTokenResponseBody(userName, password, t)
 
-	objmap := unmarshall(body, t)
-	if getJsonString(objmap, "token_type", t) != "bearer" {
+	objMap := unmarshall(body, t)
+	if getJsonString(objMap, "token_type", t) != "bearer" {
 		t.Fatal(fmt.Sprintf("Invalid token data: %s", string(body)))
 	}
 
-	return objmap
+	return objMap
 }
 
 func TestGetAccessToken(t *testing.T) {
@@ -97,8 +97,8 @@ func TestInvalidGetAccessToken(t *testing.T) {
 
 	body := getTokenResponseBody(TestUserName, "InvalidPassword", t)
 
-	objmap := unmarshall(body, t)
-	if getJsonString(objmap, "error", t) != "access_denied" {
+	objMap := unmarshall(body, t)
+	if getJsonString(objMap, "error", t) != "access_denied" {
 		t.Fatal(fmt.Sprintf("Received invalid access denied answer: %s", string(body)))
 	}
 }

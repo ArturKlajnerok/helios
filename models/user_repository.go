@@ -13,7 +13,7 @@ type UserRepository struct {
 
 func NewUserRepository(dbmap *gorp.DbMap) *UserRepository {
 	userRepository := UserRepository{dbmap: dbmap}
-    return &userRepository
+	return &userRepository
 }
 
 func (userRepository *UserRepository) FindByName(userName string, mustExist bool) (*User, error) {

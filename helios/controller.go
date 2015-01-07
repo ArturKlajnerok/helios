@@ -68,6 +68,8 @@ func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error
 				ar.ForceAccessData = accessData //Reuse previous token if it exists
 			}
 		}
+	} else {
+		ar.Authorized = false
 	}
 
 	return err
@@ -84,13 +86,13 @@ func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Reques
 		var err error
 		switch ar.Type {
 		case osin.PASSWORD:
-			controller.tokenHandlerPassword(ar)
+			err = controller.tokenHandlerPassword(ar)
 		case osin.REFRESH_TOKEN:
 			ar.Authorized = true
 		}
 
 		controller.server.FinishAccessRequest(resp, r, ar)
-		if resp.IsError && resp.InternalError != nil {
+		if resp.InternalError != nil {
 			logger.GetLogger().ErrorErr(resp.InternalError)
 		} else if err == nil {
 			logger.GetLogger().Debug("Successfully processed tokenHandler")
