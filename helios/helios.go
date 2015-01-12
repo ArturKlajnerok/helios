@@ -17,8 +17,9 @@ const (
 )
 
 type Helios struct {
-	server     *osin.Server
-	controller *Controller
+	server                *osin.Server
+	oauthController       *OAuthController
+	healthCheckController *HealthCheckController
 }
 
 func NewHelios() *Helios {
@@ -49,7 +50,7 @@ func (helios *Helios) Run(configPath string) {
 
 	storageFactory := models.NewStorageFactory(&conf.Db)
 	redisStorage := storage.NewRedisStorage(&conf.RedisGeneral, &conf.RedisMaster, &conf.RedisSlave, &conf.Server)
-	statusManager := NewStatusManager(&conf.Server, redisStorage)
+	statusManager := NewStatusManager(&conf.Server, redisStorage, storageFactory)
 
 	defer statusManager.Close()
 	defer redisStorage.DoClose()
@@ -57,7 +58,8 @@ func (helios *Helios) Run(configPath string) {
 
 	helios.initServer(redisStorage, &conf.Server)
 
-	helios.controller = NewController(influxdbClient, helios.server, storageFactory, redisStorage, &conf.Server)
+	helios.oauthController = NewOAuthController(influxdbClient, helios.server, storageFactory, redisStorage, &conf.Server)
+	helios.healthCheckController = NewHealthCheckController(statusManager)
 
 	err = http.ListenAndServe(conf.Server.Address, nil)
 	if err != nil {

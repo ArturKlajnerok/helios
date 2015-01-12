@@ -17,12 +17,13 @@ type ServerConfig struct {
 }
 
 type DbConfig struct {
-	ConnectionString string `gcfg:"connection-string"`
-	Type             string `gcfg:"type"`
-	Engine           string `gcfg:"engine"`
-	Encoding         string `gcfg:"encoding"`
-	UserTable        string `gcfg:"user-table"`
-	UserTableKey     string `gcfg:"user-table-key"`
+	ConnectionStringMaster string `gcfg:"connection-string-master"`
+	ConnectionStringSlave  string `gcfg:"connection-string-slave"`
+	Type                   string `gcfg:"type"`
+	Engine                 string `gcfg:"engine"`
+	Encoding               string `gcfg:"encoding"`
+	UserTable              string `gcfg:"user-table"`
+	UserTableKey           string `gcfg:"user-table-key"`
 }
 
 type RedisGeneralConfig struct {

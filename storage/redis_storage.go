@@ -28,6 +28,11 @@ type RedisStorage struct {
 	prefix                      string
 }
 
+type StorageDisabledError struct {
+}
+
+func (e *StorageDisabledError) Error() string { return "The given Redis Storage is not available" }
+
 func NewRedisStorage(
 	generalConfig *config.RedisGeneralConfig,
 	masterConfig *config.RedisInstanceConfig,
@@ -332,7 +337,7 @@ func (storage *RedisStorage) PingSlave() error {
 
 func (storage *RedisStorage) Ping(pool *redis.Pool) error {
 	if pool == nil {
-		return errors.New("Pool is not set")
+		return new(StorageDisabledError)
 	}
 	db := pool.Get()
 	defer db.Close()

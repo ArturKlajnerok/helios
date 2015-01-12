@@ -3,14 +3,10 @@ package helios
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"testing"
 )
 
 const (
-	ServerAddress = "http://localhost:8080"
-
 	TokenEndpoint = "/token"
 
 	TestUserName = "test"
@@ -42,21 +38,6 @@ func unmarshall(jsonData []byte, t *testing.T) map[string]*json.RawMessage {
 	return objMap
 }
 
-func getResponse(address string, t *testing.T) []byte {
-	resp, err := http.Get(address)
-	if err != nil {
-		t.Fatal("Error getting response", err)
-	}
-
-	var body []byte
-	if body, err = ioutil.ReadAll(resp.Body); err != nil {
-		t.Fatal("Error reading response body", err)
-	}
-	resp.Body.Close()
-
-	return body
-}
-
 func getTokenResponseBody(userName string, password string, t *testing.T) []byte {
 	address := ServerAddress + TokenEndpoint
 	address = address + fmt.Sprintf("?grant_type=password&client_id=%s&client_secret=%s&username=%s&password=%s",
@@ -75,12 +56,6 @@ func getTokenResponse(userName string, password string, t *testing.T) map[string
 	}
 
 	return objMap
-}
-
-func skipInShortMode(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2e test in short mode.")
-	}
 }
 
 func TestE2eGetAccessToken(t *testing.T) {
