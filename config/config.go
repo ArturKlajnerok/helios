@@ -13,29 +13,37 @@ type ServerConfig struct {
 	AccessTokenExpirationInSec  int    `gcfg:"access-token-expiration-in-sec"`
 	RefreshTokenExpirationInSec int    `gcfg:"refresh-token-expiration-in-sec"`
 	AllowMultipleAccessTokens   bool   `gcfg:"allow-multiple-access-tokens"`
+	ForceReadOnly               bool   `gcfg:"force-read-only"`
 }
 
 type DbConfig struct {
-	ConnectionString string `gcfg:"connection-string"`
-	Type             string `gcfg:"type"`
-	Engine           string `gcfg:"engine"`
-	Encoding         string `gcfg:"encoding"`
-	UserTable        string `gcfg:"user-table"`
-	UserTableKey     string `gcfg:"user-table-key"`
+	ConnectionStringMaster string `gcfg:"connection-string-master"`
+	ConnectionStringSlave  string `gcfg:"connection-string-slave"`
+	Type                   string `gcfg:"type"`
+	Engine                 string `gcfg:"engine"`
+	Encoding               string `gcfg:"encoding"`
+	UserTable              string `gcfg:"user-table"`
+	UserTableKey           string `gcfg:"user-table-key"`
 }
 
-type RedisConfig struct {
-	Address        string        `gcfg:"address"`
-	Password       string        `gcfg:"password"`
-	Prefix         string        `gcfg:"prefix"`
-	MaxIdleConn    int           `gcfg:"max-idle-connections"`
-	IdleTimeoutSec time.Duration `gcfg:"idle-timeout-in-seconds"`
+type RedisGeneralConfig struct {
+	Prefix string `gcfg:"prefix"`
+}
+
+type RedisInstanceConfig struct {
+	UseThisInstance bool          `gcfg:"use-this-instance"`
+	Address         string        `gcfg:"address"`
+	Password        string        `gcfg:"password"`
+	MaxIdleConn     int           `gcfg:"max-idle-connections"`
+	IdleTimeoutSec  time.Duration `gcfg:"idle-timeout-in-seconds"`
 }
 
 type Config struct {
-	Server ServerConfig `gcfg:"server"`
-	Db     DbConfig     `gcfg:"db"`
-	Redis  RedisConfig  `gcfg:"redis"`
+	Server       ServerConfig        `gcfg:"server"`
+	Db           DbConfig            `gcfg:"db"`
+	RedisGeneral RedisGeneralConfig  `gcfg:"redis-general"`
+	RedisMaster  RedisInstanceConfig `gcfg:"redis-master"`
+	RedisSlave   RedisInstanceConfig `gcfg:"redis-slave"`
 }
 
 var config *Config

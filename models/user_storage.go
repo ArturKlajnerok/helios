@@ -8,18 +8,19 @@ import (
 )
 
 type UserStorage struct {
-	dbmap *gorp.DbMap
+	dbmapMaster *gorp.DbMap
+	dbmapSlave  *gorp.DbMap
 }
 
-func NewUserStorage(dbmap *gorp.DbMap) *UserStorage {
-	userStorage := UserStorage{dbmap: dbmap}
+func NewUserStorage(dbmapMaster *gorp.DbMap, dbmapSlave *gorp.DbMap) *UserStorage {
+	userStorage := UserStorage{dbmapMaster: dbmapMaster, dbmapSlave: dbmapSlave}
 	return &userStorage
 }
 
 func (userStorage *UserStorage) FindByName(userName string, mustExist bool) (*User, error) {
 
 	user := new(User)
-	err := userStorage.dbmap.SelectOne(&user, "select * from user where user_name=?", userName)
+	err := userStorage.dbmapSlave.SelectOne(&user, "select * from user where user_name=?", userName)
 	if err != nil {
 		if err == sql.ErrNoRows && !mustExist {
 			return nil, nil

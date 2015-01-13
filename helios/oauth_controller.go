@@ -12,7 +12,7 @@ import (
 	"github.com/influxdb/influxdb/client"
 )
 
-type Controller struct {
+type OAuthController struct {
 	server         *osin.Server
 	userStorage    *models.UserStorage
 	redisStorage   *storage.RedisStorage
@@ -21,14 +21,14 @@ type Controller struct {
 	allowMultipleAccessTokens bool
 }
 
-func NewController(
+func NewOAuthController(
 	influxdbClient *client.Client,
 	server *osin.Server,
 	storageFactory *models.StorageFactory,
 	redisStorage *storage.RedisStorage,
-	serverConfig *config.ServerConfig) *Controller {
+	serverConfig *config.ServerConfig) *OAuthController {
 
-	controller := new(Controller)
+	controller := new(OAuthController)
 	controller.influxdbClient = influxdbClient
 	controller.userStorage = storageFactory.GetUserStorage()
 	controller.redisStorage = redisStorage
@@ -41,7 +41,7 @@ func NewController(
 	return controller
 }
 
-func (controller *Controller) infoHandler(w http.ResponseWriter, r *http.Request) {
+func (controller *OAuthController) infoHandler(w http.ResponseWriter, r *http.Request) {
 	timer := createTimerForAPICall(controller.influxdbClient, "infoHandler")
 	defer closeTimer(timer)
 
@@ -55,7 +55,7 @@ func (controller *Controller) infoHandler(w http.ResponseWriter, r *http.Request
 	osin.OutputJSON(resp, w, r)
 }
 
-func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error {
+func (controller *OAuthController) tokenHandlerPassword(ar *osin.AccessRequest) error {
 	user, err := controller.userStorage.FindByName(ar.Username, true)
 	if err == nil && user.IsValidPassword(ar.Password) {
 		ar.UserData = fmt.Sprintf("%d", user.Id)
@@ -75,7 +75,7 @@ func (controller *Controller) tokenHandlerPassword(ar *osin.AccessRequest) error
 	return err
 }
 
-func (controller *Controller) tokenHandler(w http.ResponseWriter, r *http.Request) {
+func (controller *OAuthController) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	timer := createTimerForAPICall(controller.influxdbClient, "tokenHandler")
 	defer closeTimer(timer)
 
