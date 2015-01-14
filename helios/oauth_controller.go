@@ -56,8 +56,8 @@ func (controller *OAuthController) infoHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (controller *OAuthController) tokenHandlerPassword(ar *osin.AccessRequest) error {
-	user, err := controller.userStorage.FindByName(ar.Username, true)
-	if err == nil && user.IsValidPassword(ar.Password) {
+	user, err := controller.userStorage.FindByName(ar.Username, false)
+	if user != nil && user.IsValidPassword(ar.Password) {
 		ar.UserData = fmt.Sprintf("%d", user.Id)
 		ar.Authorized = true
 		if !controller.allowMultipleAccessTokens {
@@ -70,6 +70,11 @@ func (controller *OAuthController) tokenHandlerPassword(ar *osin.AccessRequest) 
 		}
 	} else {
 		ar.Authorized = false
+		if user == nil && err == nil {
+			logger.GetLogger().Debug("tokenHandlerPassword: user with the given name not found")
+		} else if user != nil {
+			logger.GetLogger().Debug("tokenHandlerPassword: incorrect password provided")
+		}
 	}
 
 	return err
