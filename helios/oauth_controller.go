@@ -57,7 +57,7 @@ func (controller *OAuthController) infoHandler(w http.ResponseWriter, r *http.Re
 
 func (controller *OAuthController) tokenHandlerPassword(ar *osin.AccessRequest) error {
 	user, err := controller.userStorage.FindByName(ar.Username, false)
-	if user != nil && user.IsValidPassword(ar.Password) {
+	if err == nil && user != nil && user.IsValidPassword(ar.Password) {
 		ar.UserData = fmt.Sprintf("%d", user.Id)
 		ar.Authorized = true
 		if !controller.allowMultipleAccessTokens {
