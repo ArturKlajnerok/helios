@@ -1,0 +1,20 @@
+#!/bin/bash
+
+OUTPUT=$GOPATH/bin/helios/helios
+ORG_PATH="github.com/Wikia"
+REPO_PATH="${ORG_PATH}/helios"
+
+export GOPATH=${PWD}/Godeps/_workspace
+
+if [ ! -h $GOPATH/src/$REPO_PATH ]; then
+    mkdir -p $GOPATH/src/$ORG_PATH
+    ln -s ${PWD} $GOPATH/src/$REPO_PATH
+fi
+
+eval $(go env)
+
+if [ $1 ]; then
+OUTPUT=$1
+fi;
+
+go build -o $OUTPUT github.com/Wikia/helios
