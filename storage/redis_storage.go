@@ -69,6 +69,10 @@ func newPool(config *config.RedisInstanceConfig) *redis.Pool {
 				logger.GetLogger().ErrorErr(err)
 				return nil, err
 			}
+			if _, err := c.Do("AUTH", config.Password); err != nil {
+				c.Close()
+				return nil, err
+			}
 			return c, err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
