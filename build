@@ -1,10 +1,11 @@
 #!/bin/bash
 
+export PATH=$PATH/usr/local/go/bin
+export GOPATH=${PWD}/Godeps/_workspace
+
 OUTPUT=$GOPATH/bin/helios/helios
 ORG_PATH="github.com/Wikia"
 REPO_PATH="${ORG_PATH}/helios"
-
-export GOPATH=${PWD}/Godeps/_workspace
 
 if [ ! -h $GOPATH/src/$REPO_PATH ]; then
     mkdir -p $GOPATH/src/$ORG_PATH
