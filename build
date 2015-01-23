@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PATH=$PATH/usr/local/go/bin
+export PATH=$PATH:/usr/local/go/bin
 export GOPATH=${PWD}/Godeps/_workspace
 
 OUTPUT=$GOPATH/bin/helios/helios
