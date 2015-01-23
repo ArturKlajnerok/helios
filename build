@@ -17,4 +17,4 @@ if [ $1 ]; then
 OUTPUT=$1
 fi;
 
-go build -o $OUTPUT github.com/Wikia/helios
+go build -v -x -o $OUTPUT github.com/Wikia/helios
